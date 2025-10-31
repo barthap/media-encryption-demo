@@ -1,5 +1,7 @@
 import { Image } from 'expo-image';
 import { Platform, StyleSheet } from 'react-native';
+import * as FileSystem from 'expo-file-system';
+import * as React from 'react';
 
 import { Collapsible } from '@/components/ui/collapsible';
 import { ExternalLink } from '@/components/external-link';
@@ -8,16 +10,52 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Fonts } from '@/constants/theme';
+import { useAppContext } from '@/context/app-context';
+import Button from '@/components/ui/button';
 
-export default function UploadScreen() {
+export default function DownloadScreen() {
+  const appCtx = useAppContext();
+
+  const imageUrl = appCtx.appState.state === 'image_uploaded' ? appCtx.appState.uri : null;
+
+  const [savedImageUrl, setSavedImage] = React.useState<string | null>(null);
+
+  const downloadImageAsync = async () => {
+    if (!imageUrl) { return; }
+
+
+    const response = await fetch(imageUrl);
+    if (response.status !== 200) { return; }
+
+    const buffer = await response.arrayBuffer();
+    const imageData = new Uint8Array(buffer);
+
+    // TODO: Image from raw buffer
+    const pathSegments = imageUrl.split('/');
+    const filename = pathSegments[pathSegments.length - 1] || "downloaded.jpg";
+    const imageFile = new FileSystem.File(FileSystem.Paths.cache, filename);
+    imageFile.write(imageData, {});
+    setSavedImage(imageFile.uri);
+  }
+
+  const imageSection = imageUrl ?
+    <><ThemedText>URL: {imageUrl}</ThemedText>
+      <Image source={imageUrl} style={{ width: 200, height: 200, alignSelf: 'center' }} />
+      <ExternalLink href={imageUrl as any}>
+        <ThemedText type="link">Open in browser</ThemedText>
+      </ExternalLink>
+      <Button title="Save to filesystem" onPress={downloadImageAsync} />
+    </>
+    : <ThemedText>No image uploaded.</ThemedText>;
+
   return (
     <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
+      headerBackgroundColor={{ light: '#D07000', dark: '#353636' }}
       headerImage={
         <IconSymbol
           size={310}
-          color="#808080"
-          name="chevron.left.forwardslash.chevron.right"
+          color="#804000"
+          name="arrow.down.circle.fill"
           style={styles.headerImage}
         />
       }>
@@ -31,20 +69,14 @@ export default function UploadScreen() {
         </ThemedText>
       </ThemedView>
       <ThemedText>This app includes example code to help you get started.</ThemedText>
-      <Collapsible title="File-based routing">
-        <ThemedText>
-          This app has two screens:{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/explore.tsx</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          The layout file in <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{' '}
-          sets up the tab navigator.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/router/introduction">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
+      <Collapsible title="Uploaded image">
+        {imageSection}
       </Collapsible>
+      {savedImageUrl &&
+        <Collapsible title="Saved image">
+          <Image source={savedImageUrl} style={{ width: 200, height: 200, alignSelf: 'center' }} />
+        </Collapsible>
+      }
       <Collapsible title="Android, iOS, and web support">
         <ThemedText>
           You can open this project on Android, iOS, and the web. To open the web version, press{' '}
@@ -58,7 +90,7 @@ export default function UploadScreen() {
           different screen densities
         </ThemedText>
         <Image
-          source={require('@/assets/images/react-logo.png')}
+          source={require('@assets/images/react-logo.png')}
           style={{ width: 100, height: 100, alignSelf: 'center' }}
         />
         <ExternalLink href="https://reactnative.dev/docs/images">

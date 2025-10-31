@@ -1,5 +1,8 @@
 import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { Alert, Platform, StyleSheet } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
+import { Blob as ExpoBlob } from 'expo-blob';
 
 import { Collapsible } from '@/components/ui/collapsible';
 import { ExternalLink } from '@/components/external-link';
@@ -8,16 +11,73 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Fonts } from '@/constants/theme';
+import Button from '@/components/ui/button';
+import { useAppContext } from '@/context/app-context';
+import React from 'react';
 
-export default function TabTwoScreen() {
+import { uploadBlobAsync } from '@/utils/tmpfiles';
+
+interface ImageInfo {
+  uri: string;
+  width: number;
+  height: number;
+}
+
+async function readUriToArrayBufferAsync(uri: string): Promise<Uint8Array> {
+  const file = new FileSystem.File(uri);
+  // const buffer = await file.arrayBuffer();
+  // return new Uint8Array(buffer);
+  return await file.bytes();
+}
+
+async function uploadBufferAsync(data: Uint8Array): Promise<string> {
+  const blob = new ExpoBlob([data]);
+  const result = await uploadBlobAsync(blob);
+  return result.url;
+}
+
+export default function UploadScreen() {
+  const appCtx = useAppContext();
+
+  const [image, setImage] = React.useState<ImageInfo | null>(null);
+
+  const pickImage = async () => {
+    const permissions = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permissions.granted) {
+      Alert.alert('No permissions', 'Open settings and grant media lib permissions');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({});
+    if (result.canceled || result.assets.length === 0) {
+      return;
+    }
+
+    const { uri, width, height } = result.assets[0];
+    appCtx.setAppState({ state: 'image_selected', uri });
+    setImage({ uri, width, height });
+    console.log('Selected image:', { uri, width, height });
+  }
+
+  const uploadImage = async () => {
+    if (!image) {
+      return;
+    }
+
+    const buffer = await readUriToArrayBufferAsync(image.uri);
+    const uploadedUri = await uploadBufferAsync(buffer);
+
+    appCtx.setAppState({ state: 'image_uploaded', uri: uploadedUri })
+    Alert.alert('Upload successful', uploadedUri ?? 'null');
+  }
+
   return (
     <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
+      headerBackgroundColor={{ light: '#00D000', dark: '#353636' }}
       headerImage={
         <IconSymbol
           size={310}
-          color="#808080"
-          name="chevron.left.forwardslash.chevron.right"
+          color="#008000"
+          name="arrow.up.circle.fill"
           style={styles.headerImage}
         />
       }>
@@ -27,10 +87,30 @@ export default function TabTwoScreen() {
           style={{
             fontFamily: Fonts.rounded,
           }}>
-          Explore
+          Photo upload
         </ThemedText>
       </ThemedView>
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
+      <ThemedText>This section is about picking, encrypting, and uploading a photo.</ThemedText>
+      <Collapsible title="Pick a photo">
+        <Button title="Open image picker" onPress={pickImage} />
+
+        {image &&
+          <>
+            <ThemedText>Currently selected image:</ThemedText>
+            <Image source={image}
+              style={{ width: 200, height: 200, alignSelf: 'center' }}
+            />
+          </>
+        }
+      </Collapsible>
+
+      {image &&
+        <Collapsible title="Upload image">
+          <Button title="Upload image" onPress={uploadImage} />
+        </Collapsible>
+      }
+
+
       <Collapsible title="File-based routing">
         <ThemedText>
           This app has two screens:{' '}
@@ -58,7 +138,7 @@ export default function TabTwoScreen() {
           different screen densities
         </ThemedText>
         <Image
-          source={require('@/assets/images/react-logo.png')}
+          source={require('@assets/images/react-logo.png')}
           style={{ width: 100, height: 100, alignSelf: 'center' }}
         />
         <ExternalLink href="https://reactnative.dev/docs/images">
