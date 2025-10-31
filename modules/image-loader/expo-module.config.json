@@ -1,0 +1,17 @@
+{
+  "platforms": [
+    "apple",
+    "android",
+    "web"
+  ],
+  "apple": {
+    "modules": [
+      "ImageLoaderModule"
+    ]
+  },
+  "android": {
+    "modules": [
+      "expo.modules.custom.imageloader.ImageLoaderModule"
+    ]
+  }
+}

@@ -13,22 +13,36 @@ import { Fonts } from '@/constants/theme';
 import { useAppContext } from '@/context/app-context';
 import Button from '@/components/ui/button';
 
+import ImageLoader, { ImageRef } from '@modules/image-loader';
+
 export default function DownloadScreen() {
   const appCtx = useAppContext();
 
   const imageUrl = appCtx.appState.state === 'image_uploaded' ? appCtx.appState.uri : null;
 
   const [savedImageUrl, setSavedImage] = React.useState<string | null>(null);
+  const [imageRef, setImageRef] = React.useState<ImageRef | null>(null);
 
   const downloadImageAsync = async () => {
     if (!imageUrl) { return; }
-
 
     const response = await fetch(imageUrl);
     if (response.status !== 200) { return; }
 
     const buffer = await response.arrayBuffer();
     const imageData = new Uint8Array(buffer);
+
+    void (async () => {
+      try {
+        const image = await ImageLoader.loadImageAsync(imageData);
+        setImageRef(image);
+
+        const { width, height } = image;
+        console.log({ width, height });
+      } catch (e) {
+        console.warn('Failed to load image ref:', e);
+      }
+    })();
 
     // TODO: Image from raw buffer
     const pathSegments = imageUrl.split('/');
@@ -73,8 +87,13 @@ export default function DownloadScreen() {
         {imageSection}
       </Collapsible>
       {savedImageUrl &&
-        <Collapsible title="Saved image">
+        <Collapsible title="Saved image (file)">
           <Image source={savedImageUrl} style={{ width: 200, height: 200, alignSelf: 'center' }} />
+        </Collapsible>
+      }
+      {imageRef &&
+        <Collapsible title="Downloaded image (data)">
+          <Image source={imageRef} style={{ width: 200, height: 200, alignSelf: 'center' }} />
         </Collapsible>
       }
       <Collapsible title="Android, iOS, and web support">
