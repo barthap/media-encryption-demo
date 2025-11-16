@@ -199,7 +199,7 @@ function SaveStep({ encryptedBlob, image }: SaveStepProps) {
   const handleSave = async () => {
     setSavingInProgress(true);
     const result = await runCatching(
-      async () => saveFileToFileSystemAsync(encryptedBlob, 'encrypted_image.')
+      async () => saveFileToFileSystemAsync(encryptedBlob, 'encrypted_image.dat')
     );
     setSavingInProgress(false);
 

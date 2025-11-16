@@ -1,17 +1,17 @@
 import { Blob as ExpoBlob } from 'expo-blob';
 import * as Clipboard from 'expo-clipboard';
 import * as FileSystem from 'expo-file-system';
-import * as MediaLibrary from 'expo-media-library/next';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
+import * as MediaLibrary from 'expo-media-library/next';
 
 import { benchmarked } from "@/utils/benchmarks";
 import { base64toUintArray, uint8ArrayToBase64 } from "@/utils/common";
 import { KeyDerivationAlgorithm, Sha256Kdf } from '@/utils/password';
 import AesCrypto from '@modules/aes-crypto';
 import ImageLoader, { ImageRef } from '@modules/image-loader';
-import { Alert } from 'react-native';
 import { randomUUID } from 'expo-crypto';
+import { Alert, Platform } from 'react-native';
 
 export interface PickedImage {
   uri: string;
@@ -121,7 +121,8 @@ export async function copyImageToClipboardAsync(image: string | Uint8Array) {
  * @returns Promise that resolves to the created MediaLibrary.Asset or null if permissions denied
  */
 export async function saveImageToGalleryAsync(imageFileUri: string): Promise<MediaLibrary.Asset | null> {
-  const { granted } = await MediaLibrary.requestPermissionsAsync(true, ['photo']);
+  // FIXME: Why writeOnly = true doesn't let me create assets?
+  const { granted } = await MediaLibrary.requestPermissionsAsync(false);
   if (!granted) {
     Alert.alert('No permissions', 'Media library permission not granted. Please grant in settings');
     return null;
@@ -143,20 +144,35 @@ export async function saveImageToGalleryAsync(imageFileUri: string): Promise<Med
  */
 export async function saveFileToFileSystemAsync(dataBlob: ExpoBlob, filename: string): Promise<FileSystem.File | null> {
   const dir = await FileSystem.Directory.pickDirectoryAsync();
-  const file = new FileSystem.File(dir.uri, filename);
-  if (file.exists) {
-    const shouldOverwrite = await new Promise<boolean>(resolve => {
-      Alert.alert('File already exsits', `Overwrite '${filename}'?`, [
-        { text: 'Yes', style: 'destructive', onPress: () => resolve(true) },
-        { text: 'No', style: 'cancel', onPress: () => resolve(false) },
-      ])
-    });
 
-    if (!shouldOverwrite) {
-      return null;
+  let file: FileSystem.File;
+  if (Platform.OS !== 'android') {
+    // This fails on Android with:
+    // [Error: Call to function 'FileSystemFile.create' has been rejected.
+    // → Caused by: A folder with the same name already exists in the file location]
+    file = new FileSystem.File(dir.uri, filename);
+    if (file.exists) {
+      const shouldOverwrite = await new Promise<boolean>(resolve => {
+        Alert.alert('File already exsits', `Overwrite '${filename}'?`, [
+          { text: 'Yes', style: 'destructive', onPress: () => resolve(true) },
+          { text: 'No', style: 'cancel', onPress: () => resolve(false) },
+        ])
+      });
+
+      if (!shouldOverwrite) {
+        return null;
+      }
     }
+    file.create({ overwrite: true });
+  } else {
+    // FIXME: Android will ignore filename extension and use `.txt`
+    // unless mime type is provided
+    const mimeType =
+      filename.endsWith('.jpg') ? 'image/jpeg'
+        : filename.endsWith('.png') ? 'image/png'
+          : 'application/octet-stream';
+    file = dir.createFile(filename, mimeType) as FileSystem.File;
   }
-  file.create({ overwrite: true });
 
   if (USE_SLOW_STREAM_TRANSFER) {
     // FIXME: Investigate why this is so slow

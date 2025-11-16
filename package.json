@@ -9,6 +9,15 @@
     "web": "expo start --web",
     "lint": "expo lint"
   },
+  "expo": {
+    "autolinking": {
+      "android": {
+        "buildFromSource": [
+          "expo-media-library"
+        ]
+      }
+    }
+  },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
     "@react-navigation/bottom-tabs": "^7.4.0",

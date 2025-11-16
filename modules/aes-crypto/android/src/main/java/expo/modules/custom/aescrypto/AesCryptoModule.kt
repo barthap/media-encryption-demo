@@ -61,12 +61,11 @@ class AesCryptoModule : Module() {
     Class("SealedData", SealedData::class) {
       // TODO: Class cannot have multiple constructors
       // use static functions instead
-      Constructor { combined: ByteArray, ivLength: Int, tagLength: Int?  ->
-        SealedData(ivLength, tagLength ?: DEFAULT_TAG_LENGTH, content = combined)
-      }
-
       Constructor { iv: ByteArray, ciphertextWithTag: ByteArray, tagLength: Int? ->
         SealedData(iv, ciphertextWithTag, tagLength ?: DEFAULT_TAG_LENGTH)
+      }
+      Constructor { combined: ByteArray, ivLength: Int, tagLength: Int?  ->
+        SealedData(ivLength, tagLength ?: DEFAULT_TAG_LENGTH, content = combined)
       }
 
       Property("combinedSize") { sealedData -> sealedData.combinedBuffer.remaining() }
