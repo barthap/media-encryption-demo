@@ -5,7 +5,6 @@ import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInpu
 import { ThemedText } from '@/components/themed-text';
 import { ThemedScrollView, ThemedView } from '@/components/themed-view';
 import Button from '@/components/ui/button';
-import { Fonts } from '@/constants/theme';
 import { useHostingContext } from '@/context/app-context';
 import React from 'react';
 
@@ -13,7 +12,7 @@ import React from 'react';
 import { encryptImageWithPasswordAsync, pasteImageFromClipboardAsync, PickedImage, pickImageFromFilesystemAsync, pickImageFromGalleryAsync, saveFileToFileSystemAsync } from '@/business-logic';
 import { KdfAlgorithmPicker } from '@/components/kdf-picker';
 import { StepIndicator, StepItem, StepNavigation } from '@/components/step-based-flow';
-import { Card, SectionCard, InfoRow, SuccessCard, Divider } from '@/components/ui/cards';
+import { Card, InfoRow, SectionCard } from '@/components/ui/cards';
 import { useClipboardImageAvailable } from '@/hooks/use-clipboard-available';
 import { extractFilename, humanFileSize } from '@/utils/common';
 import { messageForException } from '@/utils/error';

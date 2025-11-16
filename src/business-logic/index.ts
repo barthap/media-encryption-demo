@@ -310,18 +310,98 @@ export async function loadImageInMemoryAsync(imageData: Uint8Array): Promise<Ima
  * @param overwrite - Whether to overwrite existing files (default: true)
  * @returns Promise that resolves to the created File object
  */
+interface SaveTempFileOptions {
+  overwrite?: boolean,
+  /**
+   * Try inferring file extension if filename is not provieded. This works only for images.
+   */
+  inferFileExtension?: boolean
+}
 export async function saveTempFileAsync(
   contents: Uint8Array,
   filename: string | null,
-  overwrite: boolean = true,
+  options: SaveTempFileOptions = {},
 ): Promise<FileSystem.File> {
+  const {
+    overwrite = true,
+    inferFileExtension = true,
+  } = options;
+
   if (!filename) {
     filename = randomUUID();
+
+    if (inferFileExtension) {
+      const extension = inferFileExtensionFromMagicBytes(contents);
+      filename += extension ?? '';
+    }
+
   }
   const imageFile = new FileSystem.File(FileSystem.Paths.cache, filename);
   if (overwrite) {
-    imageFile.create({ overwrite });
+    imageFile.create({ overwrite: true });
   }
   imageFile.write(contents, {});
+
   return imageFile;
+}
+
+const MAGIC_BYTES: Record<`.${string}`, Uint8Array> = Object.freeze({
+  '.png': new Uint8Array([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]),
+  '.jpg': new Uint8Array([0xFF, 0xD8, 0xFF]),
+});
+
+/**
+ * Best effort to infer file extension based on file data (its header).
+ * For now, works only for PNG and JPEG images.
+ * Add support for more as needed.
+ */
+function inferFileExtensionFromMagicBytes(imageData: Uint8Array) {
+  for (const extension in MAGIC_BYTES) {
+    const magic_bytes = MAGIC_BYTES[extension as keyof typeof MAGIC_BYTES];
+
+    // Not the fastest, but magic bytes aren't long sequences
+    const bytesMatch = imageData
+      .slice(0, magic_bytes.length)
+      .every((byte, i) => byte === magic_bytes[i]);
+
+    if (bytesMatch) {
+      return extension;
+    }
+  }
+
+  return null;
+}
+
+/**
+  * Utility used by [`saveTempFileAsync`] to infer file extension if it is an image.
+  *
+  * @deprecated Does not work on Android. Use [`inferFileExtensionFromMagicBytes`] instead,
+  * its simpler and better.
+  */
+async function inferFileExtensionAndRename(file: FileSystem.File) {
+  // NOTE: `file.type` is null for newly-created files so we have to assume it is an image
+  // and load using with expo-image
+  // FIXME: Does not work on Android (always null, see expo-image source code)
+  try {
+    const imageInfo = await Image.loadAsync(file.uri);
+
+    let extension;
+    switch (imageInfo.mediaType) {
+      case 'image/jpeg':
+        extension = '.jpg';
+        break;
+      case 'image/png':
+        extension = '.png';
+        break;
+    }
+
+    if (!extension) {
+      return;
+    }
+
+    file.move(new FileSystem.File(file.uri + extension));
+  } catch (e) {
+    console.log('Failed to infer file extension:', e);
+  }
+
 }

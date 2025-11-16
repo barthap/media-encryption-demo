@@ -270,27 +270,39 @@ function DisplayStep({ decryptedData, uploadedImageMetadata }: DisplayStepProps)
 
   const saveToFileSystem = async () => {
     setSavingToFs(true);
-    try {
-      const filename = uploadedImageMetadata?.filename || 'decrypted_image.jpg';
-      const savedFile = await saveTempFileAsync(decryptedData, filename);
-      setSavedImageUrl(savedFile.uri);
-      Alert.alert('Save successful', savedFile.uri);
-    } catch (e) {
-      console.warn('Save to filesystem failed:', e);
-      Alert.alert('Save failed', messageForException(e) ?? 'Unknown error');
-    }
+    const result = await runCatching(async () => {
+      const filename = uploadedImageMetadata?.filename;
+      return await saveTempFileAsync(decryptedData, filename ?? null);
+    });
     setSavingToFs(false);
+
+    if (result.success) {
+      setSavedImageUrl(result.value.uri);
+      Alert.alert('Save successful', result.value.uri);
+
+    } else {
+      console.warn('Save to filesystem failed:', result.error);
+      Alert.alert('Save failed', result.reason);
+    }
   };
 
   const saveToMediaLib = async () => {
     if (!savedImageUrl) {
       return;
     }
-    await saveImageToGalleryAsync(savedImageUrl);
+    const result = await runCatching(() => saveImageToGalleryAsync(savedImageUrl));
+    if (!result.success) {
+      console.warn('MediaLib save failed:', result.error);
+      Alert.alert('MediaLib failed', result.reason);
+    }
   }
 
   const copyToClipboard = async () => {
-    await copyImageToClipboardAsync(savedImageUrl ?? decryptedData);
+    const result = await runCatching(() => copyImageToClipboardAsync(savedImageUrl ?? decryptedData));
+    if (!result.success) {
+      console.warn('Clipboard copy failed:', result.error);
+      Alert.alert('Copy failed', result.reason);
+    }
   };
 
   return (
