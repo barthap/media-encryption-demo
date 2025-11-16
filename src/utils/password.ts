@@ -1,6 +1,8 @@
 import * as ExpoCrypto from 'expo-crypto';
 import { hexToUintArray } from './common';
 
+export type KeyDerivationAlgorithm = 'sha256' | 'argon2' | 'pbkdf2';
+
 export interface PasswordHasher {
   /**
    * Should return 256-bit long hash of given password

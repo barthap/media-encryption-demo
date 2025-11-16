@@ -47,3 +47,13 @@ export function hexToUintArray(hexString: string): Uint8Array {
   return bytes;
 }
 
+// TODO: Check if pure native b64 impl wouldnt be faster
+export function base64toUintArray(b64string: string): Uint8Array {
+  const binaryString = atob(b64string);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}

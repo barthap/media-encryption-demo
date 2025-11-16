@@ -1,182 +1,193 @@
 import { Blob as ExpoBlob } from 'expo-blob';
-import * as Clipboard from 'expo-clipboard';
-import * as FileSystem from 'expo-file-system';
 import { Image } from 'expo-image';
-import * as ImagePicker from 'expo-image-picker';
-import { Alert, GestureResponderEvent, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, TextInputSubmitEditingEvent } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput } from 'react-native';
 
-import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { ThemedScrollView, ThemedView } from '@/components/themed-view';
 import Button from '@/components/ui/button';
-import { Collapsible } from '@/components/ui/collapsible';
-import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Fonts } from '@/constants/theme';
 import { useHostingContext } from '@/context/app-context';
 import React from 'react';
 
 
-import SelectList from '@/components/ui/select-list';
-import { useOnAppForegrounded } from '@/hooks/use-app-active';
+import { encryptImageWithPasswordAsync, pasteImageFromClipboardAsync, PickedImage, pickImageFromFilesystemAsync, pickImageFromGalleryAsync, saveFileToFileSystemAsync } from '@/business-logic';
+import { KdfAlgorithmPicker } from '@/components/kdf-picker';
+import { StepIndicator, StepItem, StepNavigation } from '@/components/step-based-flow';
+import { Card, SectionCard, InfoRow, SuccessCard, Divider } from '@/components/ui/cards';
+import { useClipboardImageAvailable } from '@/hooks/use-clipboard-available';
 import { extractFilename, humanFileSize } from '@/utils/common';
 import { messageForException } from '@/utils/error';
-import { Sha256Kdf } from '@/utils/password';
+import { KeyDerivationAlgorithm } from '@/utils/password';
 import { runCatching } from '@/utils/result';
-import AesCrypto from '@modules/aes-crypto';
-import { benchmarked } from '@/utils/benchmarks';
 
-interface ImageInfo {
-  uri: string;
-  width: number;
-  height: number;
-}
+type UploadStep = 'pick' | 'encrypt' | 'save';
 
-// TODO: Check if pure native b64 impl wouldnt be faster
-function base64toUintArray(b64string: string): Uint8Array {
-  const binaryString = atob(b64string);
-  const len = binaryString.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return bytes;
-}
-
-async function readUriToArrayBufferAsync(uri: string): Promise<Uint8Array> {
-  if (uri.startsWith('data:')) {
-    return benchmarked('Base64 decode', () => {
-      const commaPos = uri.indexOf(',');
-      const bytes = base64toUintArray(uri.substring(commaPos + 1));
-      return Promise.resolve(bytes);
-    });
-  }
-
-  const file = new FileSystem.File(uri);
-  return await file.bytes();
-}
-
-async function pickImageFromFilesystem(): Promise<ImageInfo> {
-  const result = await FileSystem.File.pickFileAsync();
-  const file = Array.isArray(result) ? result[0] : result;
-  if (!file.type.startsWith("image/")) {
-    throw new Error('Not an image MIME type:' + file.type);
-  }
-  const image = await Image.loadAsync(file.uri);
-  return { uri: file.uri, width: image.width, height: image.height };
-}
+type UploadState =
+  | { step: 'pick'; image: PickedImage | null }
+  | { step: 'encrypt'; image: PickedImage, encryptedBlob?: ExpoBlob }
+  | { step: 'save'; image: PickedImage; encryptedBlob: ExpoBlob };
 
 type EncryptionStatus = 'not started' | 'in progress' | 'failed' | `finished in ${number} ms`;
 
-const items = [
-  { key: 'sha256', value: 'SHA-256 (unsafe)' },
-  { key: 'argon2', value: 'Argon2id (not implemented)', disabled: true },
-  { key: 'pbkdf2', value: 'PBKDF2 (not implemented)', disabled: true },
+const steps: StepItem<UploadStep>[] = [
+  { key: 'pick', label: 'Pick' },
+  { key: 'encrypt', label: 'Encrypt' },
+  { key: 'save', label: 'Save' }
 ];
 
-function useClipboardImageAvailable(): boolean {
-  const listenerRef = React.useRef<Clipboard.Subscription | null>(null);
-  const [clipboardAvailable, setClipbloardAvailable] = React.useState(false);
+// Step Components
 
-  React.useEffect(() => {
-    // initial check
-    Clipboard.hasImageAsync().then(setClipbloardAvailable);
-
-    listenerRef.current = Clipboard.addClipboardListener(({ contentTypes }) => {
-      console.log('Content types:', contentTypes);
-      const hasImage = contentTypes.includes(Clipboard.ContentType.IMAGE);
-      setClipbloardAvailable(hasImage);
-    });
-
-    return () => {
-      if (listenerRef.current) {
-        // FIXME: Shouldn't the following be deprecated?:
-        // Clipboard.removeClipboardListener(listenerRef.current);
-        listenerRef.current.remove()
-      }
-    }
-  }, []);
-
-  // Clipboard listener doesn't work when app is in background
-  useOnAppForegrounded(() => {
-    console.log('App foregrounded');
-    Clipboard.hasImageAsync().then(setClipbloardAvailable);
-  });
-
-  return clipboardAvailable;
+interface PickStepProps {
+  image: PickedImage | null;
+  onImagePicked: (pickedImage: PickedImage) => void;
 }
-
-export default function UploadScreen() {
-  const hosting = useHostingContext();
-
-  const [image, setImage] = React.useState<ImageInfo | null>(null);
-  const [password, setPassword] = React.useState('');
-  const [encryptedBlob, setEncryptedBlob] = React.useState<ExpoBlob | null>(null);
-
+function ImagePickStep({ image, onImagePicked }: PickStepProps) {
   const clipboardAvailable = useClipboardImageAvailable();
 
-  const pickImageAsync = async () => {
-    const permissions = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permissions.granted) {
-      Alert.alert('No permissions', 'Open settings and grant media lib permissions');
+  const pickImage = async () => {
+    const image = await pickImageFromGalleryAsync();
+    if (!image) {
       return;
     }
-    const result = await ImagePicker.launchImageLibraryAsync({});
-    if (result.canceled || result.assets.length === 0) {
-      return;
-    }
-
-    const { uri, width, height } = result.assets[0];
-    setImage({ uri, width, height });
-    setEncryptionStatus('not started');
-    console.log('Selected image:', { uri, width, height });
+    console.log('Selected image:', image);
+    onImagePicked(image);
   }
 
-  const loadFromFsAsync = async () => {
-    const imageResult = await runCatching(pickImageFromFilesystem);
+  const loadFromFs = async () => {
+    const imageResult = await runCatching(pickImageFromFilesystemAsync);
 
-    if (imageResult.success) {
-      setImage(imageResult.value);
-      setEncryptionStatus('not started');
-    } else {
+    if (!imageResult.success) {
       Alert.alert('Picking failed', imageResult.reason);
+    } else if (imageResult.value) {
+      onImagePicked(imageResult.value);
     }
   };
 
-  const pasteFromClipboardAsync = async () => {
-    const result = await runCatching(async () => {
-      const pasted = await Clipboard.getImageAsync({ format: 'jpeg' });
-      if (!pasted) {
-        return null;
-      }
-      const { data: base64data } = pasted;
-      const { width, height } = await Image.loadAsync(base64data);
-      // console.log({ width, height, base64: base64data.substring(0, 30) });
-
-      // TODO: This is hacky that we rely on uri being a base64 data URI
-      // we later do the conversion in `readUriToArrayBufferAsync()`
-      return { uri: base64data, width, height };
-    });
+  const pasteFromClipboard = async () => {
+    const result = await runCatching(pasteImageFromClipboardAsync);
 
     if (!result.success) {
       console.warn('Clipboard err:', result.error);
       Alert.alert('Clipboard failed', result.reason);
     } else if (result.value) {
-      setImage(result.value);
-      setEncryptionStatus('not started');
+      onImagePicked(result.value);
     }
   };
 
-  const [uploadInProgress, setUploadInProgress] = React.useState(false);
-  const uploadEncryptedImageAsync = async () => {
-    if (!encryptedBlob || !image) {
-      return;
-    }
+  return (
+    <ThemedView>
+      <ThemedText type="subtitle" style={{ marginBottom: 16 }}>Pick a photo</ThemedText>
 
+      <SectionCard
+        title="Choose image source"
+        description="Select an image from your gallery, files, or clipboard"
+        variant="default"
+      >
+        <ScrollView horizontal>
+          <ThemedView style={{ flexDirection: 'row', gap: 12 }} >
+            <Button title="Open gallery" onPress={pickImage} />
+            <Button title="Pick file" onPress={loadFromFs} />
+            <Button title="Paste from clipboard" onPress={pasteFromClipboard} disabled={!clipboardAvailable} />
+          </ThemedView>
+        </ScrollView>
+      </SectionCard>
+
+      {image && (
+        <SectionCard title="Selected image" variant="success">
+          <Image source={image} style={{ width: 200, height: 200, alignSelf: 'center' }} />
+          <InfoRow
+            label="Size:"
+            value={`${image.width} × ${image.height} px`}
+            valueStyle={{ fontWeight: '600' }}
+          />
+        </SectionCard>
+      )}
+    </ThemedView>
+  );
+}
+
+interface EncryptionStepProps {
+  image: PickedImage;
+  onEncrypted: (blob: ExpoBlob) => void;
+}
+function EncryptionStep({ image, onEncrypted }: EncryptionStepProps) {
+  const [password, setPassword] = React.useState('');
+  const [encryptionStatus, setEncryptionStatus] = React.useState<EncryptionStatus>('not started');
+  const [kdfAlgorithm, setKDF] = React.useState<KeyDerivationAlgorithm>('sha256');
+
+  const handleEncrypt = async () => {
+    if (!password) return;
+
+    try {
+      setEncryptionStatus('in progress');
+      const timeStart = Date.now();
+
+      const blob = await encryptImageWithPasswordAsync(image, password, kdfAlgorithm);
+
+      const timeEnd = Date.now();
+      const statusMessage: EncryptionStatus = `finished in ${timeEnd - timeStart} ms`;
+      setEncryptionStatus(statusMessage);
+      onEncrypted(blob);
+    } catch (e) {
+      console.warn(e);
+      Alert.alert('Encryption failed!', messageForException(e) ?? 'Unknown error');
+      setEncryptionStatus('failed');
+    }
+  };
+
+  return (
+    <ThemedView>
+      <ThemedText type="subtitle" style={{ marginBottom: 16 }}>Encrypt image</ThemedText>
+
+      <Card variant="info">
+        <ThemedText>Password:</ThemedText>
+        <TextInput
+          editable
+          value={password}
+          onChangeText={setPassword}
+          onSubmitEditing={handleEncrypt}
+          style={styles.passwordInput}
+          placeholder="Password"
+          secureTextEntry
+        />
+
+        <KdfAlgorithmPicker onPicked={setKDF} />
+
+        <Button
+          title="Encrypt"
+          onPress={handleEncrypt}
+          loading={encryptionStatus === 'in progress'}
+          style={{ marginTop: 8 }}
+        />
+
+        <InfoRow label="Status:" value={encryptionStatus} />
+      </Card>
+    </ThemedView>
+  );
+};
+
+interface SaveStepProps {
+  encryptedBlob: ExpoBlob;
+  image: PickedImage;
+}
+function SaveStep({ encryptedBlob, image }: SaveStepProps) {
+  const hosting = useHostingContext();
+
+  const [uploadInProgress, setUploadInProgress] = React.useState(false);
+  const [savingInProgress, setSavingInProgress] = React.useState(false);
+
+  const handleUpload = async () => {
     setUploadInProgress(true);
 
     const { width, height } = image;
-    const metadata = { width, height, filename: extractFilename(image.uri) ?? 'image.jpg' }
+    const metadata = {
+      width,
+      height,
+      filename: extractFilename(image.uri) ?? 'image.jpg'
+    }
     const result = await hosting.uploadFile(encryptedBlob, metadata);
+
+    setUploadInProgress(false);
 
     if (result.success) {
       Alert.alert('Upload successful', `${result.value.webpageURL}`);
@@ -184,171 +195,173 @@ export default function UploadScreen() {
       console.warn('Upload failed:', result.error);
       Alert.alert('Upload failed', result.reason);
     }
-
-    setUploadInProgress(false);
   }
 
-  const [savingInProgress, setSavingInProgress] = React.useState(false);
-  const saveEncryptedImageAsync = async () => {
-    if (!encryptedBlob || !image) {
-      return;
-    }
-
+  const handleSave = async () => {
     setSavingInProgress(true);
-    const result = await runCatching(async () => {
-      const filename = 'encrypted_image.dat';
-      const dir = await FileSystem.Directory.pickDirectoryAsync();
-      const file = new FileSystem.File(dir.uri, filename);
-      if (file.exists) {
-        const shouldOverwrite = await new Promise<boolean>(resolve => {
-          Alert.alert('File already exsits', `Overwrite '${filename}'?`, [
-            { text: 'Yes', style: 'destructive', onPress: () => resolve(true) },
-            { text: 'No', style: 'cancel', onPress: () => resolve(false) },
-          ])
-        });
-
-        if (!shouldOverwrite) {
-          return null;
-        }
-      }
-      file.create({ overwrite: true });
-
-      // TODO: Check why this is slow af
-      // await benchmarked('Write blob to file using stream', async () => {
-      //   const fileStream = file.writableStream();
-      //   const blobStream = encryptedBlob.stream();
-      //   await blobStream.pipeTo(fileStream);
-      // });
-
-      await benchmarked('Write blob to file directly', async () => {
-        const buffer = await encryptedBlob.arrayBuffer();
-        file.write(new Uint8Array(buffer));
-      })
-
-      return file.uri;
-    });
+    const result = await runCatching(
+      async () => saveFileToFileSystemAsync(encryptedBlob, 'encrypted_image.')
+    );
+    setSavingInProgress(false);
 
     if (!result.success) {
       console.warn('Save failed:', result.error);
       Alert.alert('Save failed', result.reason);
     } else if (result.value !== null) {
-      Alert.alert('Save successful', result.value);
-    }
-    setSavingInProgress(false);
-  }
-
-  const [encryptionStatus, setEncryptionStatus] = React.useState<EncryptionStatus>('not started');
-  const [kdfAlgorithm, setKDF] = React.useState<'sha256' | 'argon2' | 'pbkdf2'>('sha256');
-
-  async function encryptWithPassword(e?: TextInputSubmitEditingEvent | GestureResponderEvent) {
-    const nativeEvent = e?.nativeEvent;
-    const encryptionPassword = nativeEvent && 'text' in nativeEvent ? nativeEvent.text : password;
-
-    if (!image || !encryptionPassword) {
-      return;
-    }
-
-    try {
-      setEncryptionStatus('in progress');
-      const timeStart = Date.now();
-      const keyBytes = await Sha256Kdf.digest(encryptionPassword);
-      const key = await AesCrypto.importKey(keyBytes);
-
-      const plainImageBuffer = await readUriToArrayBufferAsync(image.uri);
-
-      const sealedData = await AesCrypto.encryptAsync(key, plainImageBuffer);
-      const sealedDataBytes = sealedData.combined();
-
-      const blob = new ExpoBlob([sealedDataBytes]);
-
-      const timeEnd = Date.now();
-      const statusMessage: EncryptionStatus = `finished in ${timeEnd - timeStart} ms`;
-      setEncryptionStatus(statusMessage);
-      setEncryptedBlob(blob);
-    } catch (e) {
-      console.warn(e);
-      Alert.alert('Encryption failed!', messageForException(e) ?? 'Unknown error');
-      setEncryptionStatus('failed');
+      Alert.alert('Save successful', result.value.uri);
     }
   }
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }} keyboardVerticalOffset={10}>
-      <ParallaxScrollView
-        headerBackgroundColor={{ light: '#00D000', dark: '#353636' }}
-        headerImage={
-          <IconSymbol
-            size={310}
-            color="#008000"
-            name="arrow.up.circle.fill"
-            style={styles.headerImage}
+    <ThemedView>
+      <ThemedText type="subtitle" style={{ marginBottom: 16 }}>Save encrypted image</ThemedText>
+
+      <SectionCard title="Encrypted data ready" variant="success">
+        <InfoRow
+          label="Data size:"
+          value={humanFileSize(encryptedBlob.size, true)}
+          valueStyle={{ fontWeight: '600', color: '#059669' }}
+        />
+      </SectionCard>
+
+      <SectionCard
+        title="Choose destination"
+        description="Upload to hosting service or save to your device"
+        variant="default"
+      >
+        <ThemedView style={{ flexDirection: 'row', gap: 12 }} >
+          <Button title="Upload" onPress={handleUpload} loading={uploadInProgress} />
+          <Button
+            title="Save to files"
+            onPress={handleSave}
+            loading={savingInProgress}
           />
-        }>
-        <ThemedView style={styles.titleContainer}>
-          <ThemedText
-            type="title"
-            style={{
-              fontFamily: Fonts.rounded,
-            }}>
-            Photo upload
-          </ThemedText>
         </ThemedView>
-        <ThemedText>This section is about picking, encrypting, and uploading a photo.</ThemedText>
-        <Collapsible title="Pick a photo" startOpen>
-          <ScrollView horizontal>
-            <ThemedView style={{ flexDirection: 'row', gap: 12 }} >
-              <Button title="Open gallery" onPress={pickImageAsync} />
-              <Button title="Pick file" onPress={loadFromFsAsync} />
-              <Button title="Paste from clipboard" onPress={pasteFromClipboardAsync} disabled={!clipboardAvailable} />
-            </ThemedView>
-          </ScrollView>
+      </SectionCard>
+    </ThemedView>
+  );
+};
 
-          {image &&
-            <>
-              <ThemedText>Currently selected image:</ThemedText>
-              <Image source={image}
-                style={{ width: 200, height: 200, alignSelf: 'center' }}
-              />
-            </>
-          }
-        </Collapsible>
+export default function UploadScreen() {
+  const hosting = useHostingContext();
 
-        {image &&
-          <Collapsible title="Encrypt image">
-            <ThemedText>Password:</ThemedText>
-            <TextInput
-              editable
-              value={password}
-              onChangeText={setPassword}
-              onSubmitEditing={encryptWithPassword}
-              style={styles.passwordInput}
-              placeholder="Password" />
+  const [uploadState, setUploadState] = React.useState<UploadState>({ step: 'pick', image: null });
 
-            <ThemedText>Key derivation algorithm:</ThemedText>
-            <SelectList data={items} setSelected={setKDF} save='key' defaultOption={items[0]} />
+  // Navigation logic
+  const canGoNext = () => {
+    switch (uploadState.step) {
+      case 'pick': return uploadState.image !== null;
+      case 'encrypt': return !!uploadState.encryptedBlob;
+      case 'save': return false;
+      default: return false;
+    }
+  };
 
-            <Button title="Encrypt" onPress={encryptWithPassword} loading={encryptionStatus === 'in progress'} style={{ marginTop: 8 }} />
-            <ThemedText>Status: {encryptionStatus}</ThemedText>
-          </Collapsible>
+  const handleNext = () => {
+    switch (uploadState.step) {
+      case 'pick':
+        if (uploadState.image) {
+          setUploadState({ step: 'encrypt', image: uploadState.image });
         }
-
-        {encryptedBlob &&
-          <Collapsible title="Upload encrypted image">
-            <ThemedText>Data size: {humanFileSize(encryptedBlob.size, true)}</ThemedText>
-            <ThemedView style={{ flexDirection: 'row', gap: 12 }} >
-              <Button title="Upload" onPress={uploadEncryptedImageAsync} loading={uploadInProgress} />
-              <Button title="Save to files" onPress={saveEncryptedImageAsync} loading={savingInProgress} />
-            </ThemedView>
-          </Collapsible>
+        break;
+      case 'encrypt':
+        if (uploadState.encryptedBlob) {
+          setUploadState({
+            step: 'save',
+            image: uploadState.image,
+            encryptedBlob: uploadState.encryptedBlob
+          });
         }
+        break;
+    }
+  };
 
+  const handlePrevious = () => {
+    switch (uploadState.step) {
+      case 'encrypt':
+        setUploadState({ step: 'pick', image: uploadState.image });
+        break;
+      case 'save':
+        setUploadState({ step: 'encrypt', image: uploadState.image });
+        break;
+    }
+  };
 
-      </ParallaxScrollView>
+  const handleReset = () => {
+    setUploadState({ step: 'pick', image: null });
+    hosting.clearUpload();
+  };
+
+  const handleImagePicked = (image: PickedImage) => {
+    setUploadState({ step: 'pick', image });
+  }
+
+  const handleEncrypted = (blob: ExpoBlob) => {
+    if (uploadState.step === 'encrypt') {
+      setUploadState({
+        step: 'encrypt',
+        image: uploadState.image,
+        encryptedBlob: blob
+      });
+    }
+  };
+
+  // Render current step
+  const renderCurrentStep = () => {
+    switch (uploadState.step) {
+      case 'pick':
+        return (
+          <ImagePickStep
+            image={uploadState.image}
+            onImagePicked={handleImagePicked}
+          />
+        );
+      case 'encrypt':
+        return (
+          <EncryptionStep
+            image={uploadState.image}
+            onEncrypted={handleEncrypted}
+          />
+        );
+      case 'save':
+        return (
+          <SaveStep
+            encryptedBlob={uploadState.encryptedBlob}
+            image={uploadState.image}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }} keyboardVerticalOffset={10}>
+      <StepIndicator currentStep={uploadState.step} steps={steps} />
+      <ThemedScrollView style={styles.container}>
+
+        {renderCurrentStep()}
+
+      </ThemedScrollView>
+      <StepNavigation
+        steps={steps}
+        currentStep={uploadState.step}
+        canGoNext={canGoNext()}
+        onNext={handleNext}
+        onPrevious={handlePrevious}
+        onReset={handleReset}
+      />
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 18,
+    gap: 16,
+    overflow: 'hidden',
+  },
   headerImage: {
     color: '#808080',
     bottom: -90,

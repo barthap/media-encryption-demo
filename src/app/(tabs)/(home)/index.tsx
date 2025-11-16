@@ -30,7 +30,20 @@ export default function HomeScreen() {
         </ThemedView>
       </Collapsible>
       <Collapsible title="About this app">
-        <ThemedText>TODO: Describe what this app does and what the purpose is</ThemedText>
+        <ThemedText>
+          The purpose of this app is to demonstrate possibilities of manipulating
+          binary data across various Expo libraries. Image data is used as an example.
+          {'\n'}
+          {'\n'}
+          The demo shows the following use case scenario:{'\n'}
+          1. User picks an image, then encrypts it with password before uploading it to an external server.{'\n'}
+          2. User downloads the image, and enters password. Decrypted image is displayed on the screen.{'\n'}
+          {'\n'}
+          The app extensively uses blobs and array buffers, and integrates many Expo libraries, including FileSystem, Image, Blob, and more.
+          It also shows some basic cryptography techniques, like key derivation functions and AES encryption.
+        </ThemedText>
+
+        <ThemedText style={{ marginTop: 8 }}>P.S. UI styling is vibe-coded. Looking pretty is not the main purpose of this app.</ThemedText>
       </Collapsible>
       <Collapsible title="Starter template Bacon stuff">
         <BaconStarterStuff />
