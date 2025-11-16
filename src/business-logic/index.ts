@@ -19,6 +19,12 @@ export interface PickedImage {
   height: number;
 }
 
+/**
+ * Prompts the user to pick an image from their photo gallery.
+ * 
+ * @returns Promise that resolves to a PickedImage object with URI and dimensions, or null if cancelled or no permissions
+ * @throws Alert is shown if permissions are not granted
+ */
 export async function pickImageFromGalleryAsync(): Promise<PickedImage | null> {
   const permissions = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!permissions.granted) {
@@ -35,6 +41,12 @@ export async function pickImageFromGalleryAsync(): Promise<PickedImage | null> {
   return image;
 }
 
+/**
+ * Prompts the user to pick an image file from the filesystem using a file picker.
+ * 
+ * @returns Promise that resolves to a PickedImage object with URI and dimensions, or null if cancelled
+ * @throws Error if the selected file is not an image MIME type
+ */
 export async function pickImageFromFilesystemAsync(): Promise<PickedImage | null> {
   let result;
   try {
@@ -51,6 +63,12 @@ export async function pickImageFromFilesystemAsync(): Promise<PickedImage | null
   return { uri: file.uri, width: image.width, height: image.height };
 }
 
+/**
+ * Retrieves an image from the device clipboard and converts it to a PickedImage.
+ * NOTE: Returned URI is a base64 data uri
+ * 
+ * @returns Promise that resolves to a PickedImage object with base64 data URI and dimensions, or null if no image in clipboard
+ */
 export async function pasteImageFromClipboardAsync(): Promise<PickedImage | null> {
   const pasted = await Clipboard.getImageAsync({ format: 'jpeg' });
   if (!pasted) {
@@ -68,6 +86,12 @@ export async function pasteImageFromClipboardAsync(): Promise<PickedImage | null
 // TODO: Accept in-memory image
 // The reason we want a File uri is that we can easily read it as base64 
 // which is the prerequisite for setting clipboard content
+/**
+ * Copies an image file to the device clipboard as base64 data.
+ * 
+ * @param imageFileUri - The file system URI of the image to copy
+ * @throws Error if the file does not exist
+ */
 export async function copyImageToClipboardAsync(imageFileUri: string) {
   const file = new FileSystem.File(imageFileUri);
   if (!file.exists) {
@@ -79,6 +103,12 @@ export async function copyImageToClipboardAsync(imageFileUri: string) {
   await Clipboard.setImageAsync(base64data);
 }
 
+/**
+ * Saves an image file to the device's photo gallery/media library.
+ * 
+ * @param imageFileUri - The file system URI of the image to save
+ * @returns Promise that resolves to the created MediaLibrary.Asset or null if permissions denied
+ */
 export async function saveImageToGalleryAsync(imageFileUri: string): Promise<MediaLibrary.Asset | null> {
   const { granted } = await MediaLibrary.requestPermissionsAsync(true, ['photo']);
   if (!granted) {
@@ -92,6 +122,13 @@ export async function saveImageToGalleryAsync(imageFileUri: string): Promise<Med
   return asset;
 }
 
+/**
+ * Prompts user to select a directory and saves a data blob as a file.
+ * 
+ * @param dataBlob - The blob data to save
+ * @param filename - The name for the saved file
+ * @returns Promise that resolves to the created File object or null if cancelled/not overwritten
+ */
 export async function saveFileToFileSystemAsync(dataBlob: ExpoBlob, filename: string): Promise<FileSystem.File | null> {
   const dir = await FileSystem.Directory.pickDirectoryAsync();
   const file = new FileSystem.File(dir.uri, filename);
@@ -117,6 +154,12 @@ export async function saveFileToFileSystemAsync(dataBlob: ExpoBlob, filename: st
   return file;
 }
 
+/**
+ * Reads data from a URI (either base64 data URI or file system URI) into a Uint8Array.
+ * 
+ * @param uri - The URI to read from (supports data: URIs and file system URIs)
+ * @returns Promise that resolves to the file contents as Uint8Array
+ */
 async function readUriToArrayBufferAsync(uri: string): Promise<Uint8Array> {
   if (uri.startsWith('data:')) {
     return benchmarked('Base64 decode', () => {
@@ -130,6 +173,15 @@ async function readUriToArrayBufferAsync(uri: string): Promise<Uint8Array> {
   return await file.bytes();
 }
 
+/**
+ * Encrypts an image using AES encryption with a password-derived key.
+ * 
+ * @param image - The PickedImage object containing the image URI and metadata
+ * @param password - The password to derive the encryption key from
+ * @param kdfAlgorithm - The key derivation algorithm to use (currently only 'sha256' is supported)
+ * @returns Promise that resolves to an ExpoBlob containing the encrypted data
+ * @throws Error if an unsupported KDF algorithm is specified
+ */
 export async function encryptImageWithPasswordAsync(
   image: PickedImage,
   password: string,
@@ -152,6 +204,13 @@ export async function encryptImageWithPasswordAsync(
 }
 
 // Download/Load functions
+/**
+ * Downloads encrypted data from a URL.
+ * 
+ * @param url - The URL to download data from
+ * @returns Promise that resolves to the downloaded data as Uint8Array
+ * @throws Error if the HTTP request fails (non-200 status)
+ */
 export async function downloadEncryptedDataAsync(url: string): Promise<Uint8Array> {
   const response = await fetch(url);
   if (response.status !== 200) {
@@ -162,6 +221,11 @@ export async function downloadEncryptedDataAsync(url: string): Promise<Uint8Arra
   return new Uint8Array(buffer);
 }
 
+/**
+ * Prompts the user to pick a file and loads its contents as encrypted data.
+ * 
+ * @returns Promise that resolves to the file contents as Uint8Array, or null if cancelled or no file selected
+ */
 export async function loadEncryptedDataFromFileAsync(): Promise<Uint8Array | null> {
   let result;
   try {
@@ -181,6 +245,15 @@ export async function loadEncryptedDataFromFileAsync(): Promise<Uint8Array | nul
 }
 
 // Decryption functions
+/**
+ * Decrypts data using AES decryption with a password-derived key.
+ * 
+ * @param encryptedData - The encrypted data to decrypt
+ * @param password - The password to derive the decryption key from
+ * @param kdfAlgorithm - The key derivation algorithm to use (currently only 'sha256' is supported)
+ * @returns Promise that resolves to the decrypted data as Uint8Array
+ * @throws Error if an unsupported KDF algorithm is specified or decryption fails
+ */
 export async function decryptDataWithPasswordAsync(
   encryptedData: Uint8Array,
   password: string,
@@ -198,10 +271,24 @@ export async function decryptDataWithPasswordAsync(
 }
 
 // Image processing functions
+/**
+ * Loads image data into memory and returns an ImageRef handle.
+ * 
+ * @param imageData - The raw image data as Uint8Array
+ * @returns Promise that resolves to an ImageRef object for the loaded image
+ */
 export async function loadImageInMemoryAsync(imageData: Uint8Array): Promise<ImageRef> {
   return await ImageLoader.loadImageAsync(imageData);
 }
 
+/**
+ * Saves data to a temporary file in the cache directory.
+ * 
+ * @param contents - The data to write to the file
+ * @param filename - The filename to use, or null to generate a random UUID
+ * @param overwrite - Whether to overwrite existing files (default: true)
+ * @returns Promise that resolves to the created File object
+ */
 export async function saveTempFileAsync(
   contents: Uint8Array,
   filename: string | null,
