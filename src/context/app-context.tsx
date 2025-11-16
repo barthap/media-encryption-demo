@@ -1,26 +1,81 @@
+import { Result, runCatching } from '@/utils/result';
+import { uploadBlobAsync } from '@/utils/tmpfiles';
+import { Blob as ExpoBlob } from 'expo-blob';
 import * as React from 'react';
 
+export interface ImageMetadata {
+  width: number;
+  height: number;
+  filename: string;
+}
+
+export interface UploadInfo {
+  /**
+   * Timestamp at which upload expires
+   */
+  expires: Date;
+  /**
+   * User-friendly URL for viewing info in the browser
+   */
+  webpageURL: string;
+  /**
+   * Direct link to the uploaded file.
+   */
+  directURL: string;
+}
 
 type AppState =
-  | { state: 'not_picked' }
-  | { state: 'image_selected', uri: string }
-  | { state: 'image_uploaded', uri: string };
+  | { status: 'none' }
+  | { status: 'image_uploaded', info: UploadInfo, metadata: ImageMetadata };
 
-const initialAppState: AppState = { state: 'not_picked' };
+const initialAppState: AppState = { status: 'none' };
 
 interface CtxVal {
-  appState: AppState,
+  uploadState: AppState,
   setAppState: (newState: AppState) => void
+  uploadFile: (data: ExpoBlob, metadata: ImageMetadata) => Promise<Result<UploadInfo>>;
+  clearUpload: () => void;
 }
 
-const AppCtx = React.createContext<CtxVal>({ appState: initialAppState, setAppState: () => { } });
+const FileHostingContext = React.createContext<CtxVal>({
+  uploadState: initialAppState,
+  setAppState: () => { },
+  uploadFile: () => Promise.reject(new Error('Context not set')),
+  clearUpload: () => { }
+});
 
-export function useAppContext() {
-  return React.useContext(AppCtx);
+export function useHostingContext() {
+  return React.useContext(FileHostingContext);
 }
 
-export default function AppContext({ children }: React.PropsWithChildren) {
+export default function FileHostingProvider({ children }: React.PropsWithChildren) {
   const [appState, setAppState] = React.useState<AppState>(initialAppState);
 
-  return <AppCtx.Provider value={{ appState, setAppState }}>{children}</AppCtx.Provider>
+  const uploadFile = (data: ExpoBlob, metadata: ImageMetadata) => runCatching(async () => {
+    const encryptedFilename = `${metadata.filename}.dat`;
+
+    const { url, webpageURL, expires } = await uploadBlobAsync(data, encryptedFilename);
+
+    const info: UploadInfo = {
+      expires,
+      webpageURL,
+      directURL: url,
+    };
+
+    setAppState({ status: 'image_uploaded', info, metadata });
+    return info;
+  });
+
+  const clearUpload = () => setAppState(initialAppState);
+
+  const ctxValue: CtxVal = {
+    uploadState: appState,
+    setAppState,
+    uploadFile,
+    clearUpload,
+  };
+
+  return <FileHostingContext.Provider value={ctxValue}>
+    {children}
+  </FileHostingContext.Provider>
 }

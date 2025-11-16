@@ -30,7 +30,7 @@ function prepareRequestBody(blob: ExpoBlob, filename: string) {
   return formData;
 }
 
-function makeDownloadUrl(responseUrl: string): string {
+function makeDownloadableUrl(responseUrl: string): string {
   // http://tmpfiles.org/5891655/name.jpg -> http://tmpfiles.org/dl/5891655/name.jpg
 
   responseUrl = responseUrl.replace('http', 'https');
@@ -42,6 +42,7 @@ function makeDownloadUrl(responseUrl: string): string {
 
 interface UploadBlobResult {
   url: string;
+  webpageURL: string,
   expires: Date
 }
 
@@ -68,7 +69,8 @@ export async function uploadBlobAsync(
   expirationDate.setHours(expirationDate.getHours() + 1);
 
   return {
-    url: makeDownloadUrl(json.data.url),
+    url: makeDownloadableUrl(json.data.url),
+    webpageURL: json.data.url,
     expires: expirationDate
   }
 }

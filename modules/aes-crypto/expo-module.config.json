@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android", "web"],
+  "apple": {
+    "modules": ["AesCryptoModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.custom.aescrypto.AesCryptoModule"]
+  }
+}
