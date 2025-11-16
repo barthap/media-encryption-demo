@@ -290,10 +290,7 @@ function DisplayStep({ decryptedData, uploadedImageMetadata }: DisplayStepProps)
   }
 
   const copyToClipboard = async () => {
-    if (!savedImageUrl) {
-      return;
-    }
-    await copyImageToClipboardAsync(savedImageUrl);
+    await copyImageToClipboardAsync(savedImageUrl ?? decryptedData);
   };
 
   return (
@@ -331,7 +328,6 @@ function DisplayStep({ decryptedData, uploadedImageMetadata }: DisplayStepProps)
             />
             <Button
               title="Copy to clipboard"
-              disabled={!savedImageUrl}
               onPress={copyToClipboard}
             />
           </ThemedView>

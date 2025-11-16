@@ -57,3 +57,13 @@ export function base64toUintArray(b64string: string): Uint8Array {
   }
   return bytes;
 }
+
+// TODO: Check if pure native b64 impl wouldnt be faster
+export function uint8ArrayToBase64(uint8Array: Uint8Array) {
+  let binaryString = '';
+  for (let i = 0; i < uint8Array.length; i++) {
+    binaryString += String.fromCharCode(uint8Array[i]);
+  }
+
+  return btoa(binaryString);
+}

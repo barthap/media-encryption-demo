@@ -6,7 +6,7 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 
 import { benchmarked } from "@/utils/benchmarks";
-import { base64toUintArray } from "@/utils/common";
+import { base64toUintArray, uint8ArrayToBase64 } from "@/utils/common";
 import { KeyDerivationAlgorithm, Sha256Kdf } from '@/utils/password';
 import AesCrypto from '@modules/aes-crypto';
 import ImageLoader, { ImageRef } from '@modules/image-loader';
@@ -18,6 +18,12 @@ export interface PickedImage {
   width: number;
   height: number;
 }
+
+/**
+ * Uses Stream to write ExpoBlob contents to a FileSystem.File.
+ * For some reason it is extremely slow (~700x slower than direct write)
+ */
+const USE_SLOW_STREAM_TRANSFER = false;
 
 /**
  * Prompts the user to pick an image from their photo gallery.
@@ -83,24 +89,29 @@ export async function pasteImageFromClipboardAsync(): Promise<PickedImage | null
   return { uri: base64data, width, height };
 }
 
-// TODO: Accept in-memory image
-// The reason we want a File uri is that we can easily read it as base64 
-// which is the prerequisite for setting clipboard content
 /**
- * Copies an image file to the device clipboard as base64 data.
+ * Copies an image to the device clipboard as base64 data.
+ *
+ * NOTE: Prefer providing File uri to Uint8Array because base64 encoding is 6x faster for files.
  * 
- * @param imageFileUri - The file system URI of the image to copy
+ * @param image - Bytes or file system URI of the image to copy
  * @throws Error if the file does not exist
  */
-export async function copyImageToClipboardAsync(imageFileUri: string) {
-  const file = new FileSystem.File(imageFileUri);
-  if (!file.exists) {
-    throw new Error('File must exist');
-  }
+export async function copyImageToClipboardAsync(image: string | Uint8Array) {
+  const base64promise = (async () => {
+    if (image instanceof Uint8Array) {
+      return benchmarked('Base64 encode', async () => uint8ArrayToBase64(image));
+    }
 
-  const base64data = await file.base64();
+    const file = new FileSystem.File(image);
+    if (!file.exists) {
+      throw new Error('File must exist');
+    }
 
-  await Clipboard.setImageAsync(base64data);
+    return benchmarked('File.base64()', async () => file.base64());
+  })();
+
+  await Clipboard.setImageAsync(await base64promise);
 }
 
 /**
@@ -121,6 +132,7 @@ export async function saveImageToGalleryAsync(imageFileUri: string): Promise<Med
   Alert.alert('Asset added', info);
   return asset;
 }
+
 
 /**
  * Prompts user to select a directory and saves a data blob as a file.
@@ -146,10 +158,19 @@ export async function saveFileToFileSystemAsync(dataBlob: ExpoBlob, filename: st
   }
   file.create({ overwrite: true });
 
-  await benchmarked('Write blob to file directly', async () => {
-    const buffer = await dataBlob.arrayBuffer();
-    file.write(new Uint8Array(buffer));
-  })
+  if (USE_SLOW_STREAM_TRANSFER) {
+    // FIXME: Investigate why this is so slow
+    await benchmarked('Stream blob contents into file', async () => {
+      const fileStream = file.writableStream();
+      const blobStream = dataBlob.stream();
+      await blobStream.pipeTo(fileStream);
+    });
+  } else {
+    await benchmarked('Write blob to file directly', async () => {
+      const buffer = await dataBlob.arrayBuffer();
+      file.write(new Uint8Array(buffer));
+    });
+  }
 
   return file;
 }
