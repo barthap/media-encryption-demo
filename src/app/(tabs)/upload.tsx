@@ -206,8 +206,8 @@ function SaveStep({ encryptedBlob, image }: SaveStepProps) {
     if (!result.success) {
       console.warn('Save failed:', result.error);
       Alert.alert('Save failed', result.reason);
-    } else if (result.value !== null) {
-      Alert.alert('Save successful', result.value.uri);
+    } else {
+      Alert.alert('Save successful', `File URI: ${result.value?.uri}`);
     }
   }
 
@@ -231,7 +231,7 @@ function SaveStep({ encryptedBlob, image }: SaveStepProps) {
         <ThemedView style={{ flexDirection: 'row', gap: 12 }} >
           <Button title="Upload" onPress={handleUpload} loading={uploadInProgress} />
           <Button
-            title="Save to files"
+            title={Platform.OS === 'web' ? "Save to downloads" : "Save to files"}
             onPress={handleSave}
             loading={savingInProgress}
           />

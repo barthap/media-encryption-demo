@@ -17,7 +17,9 @@ import {
   loadImageInMemoryAsync,
   saveTempFileAsync,
   copyImageToClipboardAsync,
-  saveImageToGalleryAsync
+  saveImageToGalleryAsync,
+  saveFileToFileSystemAsync,
+  inferFileExtensionFromMagicBytes
 } from '@/business-logic';
 import { KdfAlgorithmPicker } from '@/components/kdf-picker';
 import { StepIndicator, StepItem, StepNavigation } from '@/components/step-based-flow';
@@ -27,6 +29,7 @@ import { messageForException } from '@/utils/error';
 import { KeyDerivationAlgorithm } from '@/utils/password';
 import { runCatching } from '@/utils/result';
 import { useExpirationTime } from '@/hooks/use-expiration-time';
+import { ExpoBlob } from '@/imports/expo-blob';
 
 type DownloadStep = 'load' | 'decrypt' | 'display';
 
@@ -276,6 +279,25 @@ function DisplayStep({ decryptedData, uploadedImageMetadata }: DisplayStepProps)
     }
   };
 
+  const saveToDownloads = async () => {
+    if (Platform.OS !== 'web') {
+      return;
+    }
+
+    const result = await runCatching(async () => {
+      const extension = inferFileExtensionFromMagicBytes(decryptedData);
+      const filename = uploadedImageMetadata?.filename ?? `image${extension}`;
+      const blob = new ExpoBlob([decryptedData as BlobPart])
+      await saveFileToFileSystemAsync(blob, filename);
+    });
+
+    if (!result.success) {
+      console.warn('Download failed:', result.error);
+      Alert.alert('Download failed', result.reason);
+    }
+
+  }
+
   return (
     <ThemedView>
       <ThemedText type="subtitle" style={{ marginBottom: 16 }}>Display decrypted image</ThemedText>
@@ -299,16 +321,24 @@ function DisplayStep({ decryptedData, uploadedImageMetadata }: DisplayStepProps)
       >
         <ScrollView horizontal>
           <ThemedView style={{ flexDirection: 'row', gap: 12 }} >
-            <Button
-              title="Save to cache dir"
-              onPress={saveToFileSystem}
-              loading={savingToFs}
-            />
-            <Button
-              title="Save to gallery"
-              disabled={!savedImageUrl}
-              onPress={saveToMediaLib}
-            />
+            {Platform.OS === 'web' ? (
+              <Button
+                title="Save to downloads"
+                onPress={saveToDownloads}
+              />
+            ) : (<>
+              <Button
+                title="Save to cache dir"
+                onPress={saveToFileSystem}
+                loading={savingToFs}
+              />
+              <Button
+                title="Save to gallery"
+                disabled={!savedImageUrl}
+                onPress={saveToMediaLib}
+              />
+            </>
+            )}
             <Button
               title="Copy to clipboard"
               onPress={copyToClipboard}
@@ -317,24 +347,26 @@ function DisplayStep({ decryptedData, uploadedImageMetadata }: DisplayStepProps)
         </ScrollView>
       </SectionCard>
 
-      {savedImageUrl && (
-        <SectionCard title="Saved image" variant="success">
-          <ThemedText style={styles.description}>Saved to filesystem{'\''}s cache dir</ThemedText>
-          <ThemedText
-            style={[styles.description, { fontSize: 12 }]}
-            numberOfLines={1}
-            ellipsizeMode="middle"
-          >
-            <ThemedText type='defaultSemiBold' style={{ fontSize: 12 }}>uri:</ThemedText>
-            {' '}{savedImageUrl}
-          </ThemedText>
-          <Image
-            source={savedImageUrl}
-            style={{ width: 200, height: 200, alignSelf: 'center' }}
-          />
-        </SectionCard>
-      )}
-    </ThemedView>
+      {
+        savedImageUrl && (
+          <SectionCard title="Saved image" variant="success">
+            <ThemedText style={styles.description}>Saved to filesystem{'\''}s cache dir</ThemedText>
+            <ThemedText
+              style={[styles.description, { fontSize: 12 }]}
+              numberOfLines={1}
+              ellipsizeMode="middle"
+            >
+              <ThemedText type='defaultSemiBold' style={{ fontSize: 12 }}>uri:</ThemedText>
+              {' '}{savedImageUrl}
+            </ThemedText>
+            <Image
+              source={savedImageUrl}
+              style={{ width: 200, height: 200, alignSelf: 'center' }}
+            />
+          </SectionCard>
+        )
+      }
+    </ThemedView >
   );
 }
 

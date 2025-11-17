@@ -1,5 +1,14 @@
-{
-  "expo": {
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const ip = require('internal-ip');
+
+const corsProxyHost = process.env.CORS_PROXY_HOST || ip.internalIpV4Sync();
+// Listen on a specific port via the PORT environment variable
+const corsProxyPort = process.env.CORS_PROXY_PORT || 8079;
+
+module.exports = {
+    extra: {
+      corsProxyURL: `http://${corsProxyHost}:${corsProxyPort}`
+    },
     "name": "media-encryption-demo",
     "slug": "media-encryption-demo",
     "version": "1.0.0",
@@ -49,4 +58,3 @@
       "reactCompiler": true
     }
   }
-}

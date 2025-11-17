@@ -1,6 +1,6 @@
 import { Result, runCatching } from '@/utils/result';
 import { uploadBlobAsync } from '@/utils/tmpfiles';
-import { Blob as ExpoBlob } from 'expo-blob';
+import { ExpoBlob } from '@/imports/expo-blob';
 import * as React from 'react';
 
 export interface ImageMetadata {

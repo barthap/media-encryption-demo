@@ -27,7 +27,6 @@ export function useClipboardImageAvailable(): boolean {
 
   // Clipboard listener doesn't work when app is in background
   useOnAppForegrounded(() => {
-    console.log('App foregrounded');
     Clipboard.hasImageAsync().then(setClipbloardAvailable);
   });
 

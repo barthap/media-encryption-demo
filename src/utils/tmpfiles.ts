@@ -1,5 +1,6 @@
-import { Blob as ExpoBlob } from "expo-blob";
+import { ExpoBlob } from "@/imports/expo-blob";
 import { fetch } from 'expo/fetch';
+import { Platform } from 'react-native';
 
 const UPLOAD_URL = 'https://tmpfiles.org/api/v1/upload';
 
@@ -26,7 +27,10 @@ function prepareRequestBody(blob: ExpoBlob, filename: string) {
   blob.name = filename;
 
   const formData = new FormData();
-  formData.append('file', blob as Blob);
+
+  // TODO: Verify if this platform check is actually needed
+  formData.append('file', blob as Blob, Platform.OS === 'web' ? filename : undefined);
+
   return formData;
 }
 
@@ -55,9 +59,8 @@ export async function uploadBlobAsync(
   const response = await fetch(UPLOAD_URL, {
     method: 'POST',
     body: requestBody,
-    headers: {
-      'content-type': 'multipart/form-data'
-    }
+    // NOTE: Do not manually set `headers: { content-type: multipart/form-data }` here
+    // This breaks web which automatically adds boundary here. And would end up with HTTP 422 responses
   });
 
   const json = await response.json() as UploadResponse;

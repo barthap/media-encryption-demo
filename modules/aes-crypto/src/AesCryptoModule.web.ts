@@ -109,7 +109,11 @@ class AesCryptoModule extends NativeModule {
     // we're creating the buffer now so we can avoid reallocating it later
     const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
 
-    const algorithm = { name: 'AES-GCM', iv: iv, tagLength: TAG_LENGTH * 8, additionalData: aad };
+    // workaround for invalid AAD format error when it's present but undefined
+    const algorithmBase = { name: 'AES-GCM', iv: iv, tagLength: TAG_LENGTH * 8 };
+    const algorithm = aad ? { ...algorithmBase, additionalData: aad } : algorithmBase;
+
+
     const ciphertextWithTag = await crypto.subtle.encrypt(
       algorithm,
       key.key,
@@ -121,7 +125,9 @@ class AesCryptoModule extends NativeModule {
 
   async decryptAsync(key: SymmetricKey, sealedData: SealedData, aad?: Uint8Array): Promise<Uint8Array> {
 
-    const algorithm = { name: 'AES-GCM', iv: sealedData.iv(), tagLength: TAG_LENGTH * 8, additionalData: aad };
+    // workaround for invalid AAD format error when it's present but undefined
+    const algorithmBase = { name: 'AES-GCM', iv: sealedData.iv(), tagLength: TAG_LENGTH * 8 };
+    const algorithm = aad ? { ...algorithmBase, additionalData: aad } : algorithmBase;
 
     const plaintextBuffer = await crypto.subtle.decrypt(
       algorithm,

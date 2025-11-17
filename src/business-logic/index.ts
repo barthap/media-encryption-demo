@@ -1,9 +1,8 @@
-import { Blob as ExpoBlob } from 'expo-blob';
+import Constants from 'expo-constants';
 import * as Clipboard from 'expo-clipboard';
 import * as FileSystem from 'expo-file-system';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import * as MediaLibrary from 'expo-media-library/next';
 
 import { benchmarked } from "@/utils/benchmarks";
 import { base64toUintArray, uint8ArrayToBase64 } from "@/utils/common";
@@ -12,6 +11,10 @@ import AesCrypto from '@modules/aes-crypto';
 import ImageLoader, { ImageRef } from '@modules/image-loader';
 import { randomUUID } from 'expo-crypto';
 import { Alert, Platform } from 'react-native';
+
+import { ExpoBlob } from '@/imports/expo-blob';
+import * as MediaLibrary from '@/imports/media-library-next';
+
 
 export interface PickedImage {
   uri: string;
@@ -54,6 +57,12 @@ export async function pickImageFromGalleryAsync(): Promise<PickedImage | null> {
  * @throws Error if the selected file is not an image MIME type
  */
 export async function pickImageFromFilesystemAsync(): Promise<PickedImage | null> {
+  // On web, expo-file-system is not available but web image-picker
+  // is basically a file picker, so we can just redirect
+  if (Platform.OS === 'web') {
+    return pickImageFromGalleryAsync();
+  }
+
   let result;
   try {
     result = await FileSystem.File.pickFileAsync();
@@ -137,12 +146,31 @@ export async function saveImageToGalleryAsync(imageFileUri: string): Promise<Med
 
 /**
  * Prompts user to select a directory and saves a data blob as a file.
+ *
+ * On **web**, it saves the file to the Downloads folder
  * 
  * @param dataBlob - The blob data to save
  * @param filename - The name for the saved file
  * @returns Promise that resolves to the created File object or null if cancelled/not overwritten
  */
 export async function saveFileToFileSystemAsync(dataBlob: ExpoBlob, filename: string): Promise<FileSystem.File | null> {
+  if (Platform.OS === 'web') {
+    const url = URL.createObjectURL(dataBlob as Blob);
+    try {
+      let element = document.createElement('a');
+      element.setAttribute('href', url);
+      element.setAttribute('download', filename);
+
+      element.style.display = 'none';
+      document.body.appendChild(element);
+      element.click();
+      document.body.removeChild(element);
+    } finally {
+      URL.revokeObjectURL(url);
+      return null;
+    }
+  }
+
   const dir = await FileSystem.Directory.pickDirectoryAsync();
 
   let file: FileSystem.File;
@@ -206,6 +234,12 @@ async function readUriToArrayBufferAsync(uri: string): Promise<Uint8Array> {
     });
   }
 
+  if (Platform.OS === 'web') {
+    const response = await fetch(uri);
+    const buffer = await response.arrayBuffer();
+    return new Uint8Array(buffer);
+  }
+
   const file = new FileSystem.File(uri);
   return await file.bytes();
 }
@@ -249,6 +283,16 @@ export async function encryptImageWithPasswordAsync(
  * @throws Error if the HTTP request fails (non-200 status)
  */
 export async function downloadEncryptedDataAsync(url: string): Promise<Uint8Array> {
+  if (Platform.OS === 'web') {
+    // We need to bypass CORS on web
+    const proxyURL = Constants.expoConfig?.extra?.corsProxyURL || 'http://127.0.0.1:8079';
+    console.log('CORS Proxy URL:', proxyURL);
+
+    const slash = proxyURL.endsWith('/') ? '' : '/'
+
+    url = `${proxyURL}${slash}${url}`;
+    console.log('Proxied URL:', url);
+  }
   const response = await fetch(url);
   if (response.status !== 200) {
     throw new Error(`Failed to download: HTTP ${response.status}`);
@@ -264,6 +308,35 @@ export async function downloadEncryptedDataAsync(url: string): Promise<Uint8Arra
  * @returns Promise that resolves to the file contents as Uint8Array, or null if cancelled or no file selected
  */
 export async function loadEncryptedDataFromFileAsync(): Promise<Uint8Array | null> {
+  if (Platform.OS === 'web') {
+    const buffer: ArrayBuffer | null = await new Promise((resolve, reject) => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.onchange = () => {
+        const file = input.files?.[0]
+        if (!file) {
+          resolve(null);
+          return;
+        }
+        const reader = new FileReader();
+        reader.onerror = reject;
+        reader.onabort = reject;
+        reader.readAsArrayBuffer(file);
+        reader.onload = (e) => {
+          resolve(e.target?.result as ArrayBuffer | null);
+        };
+      }
+      input.onerror = reject;
+      input.onabort = reject;
+      input.oncancel = () => resolve(null);
+      input.click();
+    });
+    if (!buffer) {
+      return null;
+    }
+    return new Uint8Array(buffer);
+  }
+
   let result;
   try {
     result = await FileSystem.File.pickFileAsync();
@@ -338,6 +411,9 @@ export async function saveTempFileAsync(
   filename: string | null,
   options: SaveTempFileOptions = {},
 ): Promise<FileSystem.File> {
+  if (Platform.OS === 'web') {
+    throw new Error('saveTempFileAsync not available on web')
+  }
   const {
     overwrite = true,
     inferFileExtension = true,
@@ -371,7 +447,7 @@ const MAGIC_BYTES: Record<`.${string}`, Uint8Array> = Object.freeze({
  * For now, works only for PNG and JPEG images.
  * Add support for more as needed.
  */
-function inferFileExtensionFromMagicBytes(imageData: Uint8Array) {
+export function inferFileExtensionFromMagicBytes(imageData: Uint8Array) {
   for (const extension in MAGIC_BYTES) {
     const magic_bytes = MAGIC_BYTES[extension as keyof typeof MAGIC_BYTES];
 
