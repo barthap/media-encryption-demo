@@ -46,13 +46,13 @@ export default function HomeScreen() {
         <ThemedText style={{ marginTop: 8 }}>P.S. UI styling is vibe-coded. Looking pretty is not the main purpose of this app.</ThemedText>
       </Collapsible>
       <Collapsible title="Starter template Bacon stuff">
-        <BaconStarterStuff />
+        <ExpoTemplateStarterStuff />
       </Collapsible>
     </ParallaxScrollView>
   );
 }
 
-function BaconStarterStuff() {
+function ExpoTemplateStarterStuff() {
   return <>
     <ThemedText>I left this here because I{'\''}m noob at React and this is a good source of copy-paste 😜</ThemedText>
     <ThemedText>
