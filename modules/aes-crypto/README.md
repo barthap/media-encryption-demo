@@ -216,9 +216,9 @@ namespace Crypto.AES {
 
 ## Native implementations
 
-- iOS: `CryptoKit` AES GCM
-- Android: `javax.crypto.Cipher`
-- Web: `SubtleCrypto` API
+- iOS: [`CryptoKit` AES GCM](https://developer.apple.com/documentation/cryptokit/aes/gcm)
+- Android: [`javax.crypto`](https://developer.android.com/reference/javax/crypto/package-summary) `Cipher` and `KeyGenerator` classes
+- Web: [`SubtleCrypto` API](https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto)
 
 ## NIST recommendations for AES-GCM
 
@@ -228,7 +228,7 @@ and [RFC-5116](https://www.ietf.org/rfc/rfc5116.txt) recommendations.
 
 Key points:
 
-- Nonce (IV) cannot be reused between encryption.
+- Nonce (IV) cannot be reused between encryptions! Must be generated every time `AES.encryptAsync()` is called.
 - Recommended IV length is 96 bit (12 bytes)
 - Recommended tag length is 128 bit (16 bytes), a few other arbitrary values are allowed under certain circumstances
 
