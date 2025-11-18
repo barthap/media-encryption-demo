@@ -2,7 +2,7 @@
 
 A demonstration app showcasing binary data manipulation across various Expo libraries using image data as an example. The app demonstrates encrypted image workflows, from client-side encryption to secure storage on external hosting and later retrieval.
 
-https://github.com/user-attachments/assets/25ff87c3-a5b1-4c5c-a0ec-67aeac73bf67
+<https://github.com/user-attachments/assets/25ff87c3-a5b1-4c5c-a0ec-67aeac73bf67>
 
 ## Overview
 
@@ -124,10 +124,12 @@ Based on development experience and code analysis, several issues and limitation
 
 **Binary Data Conversion Issues:**
 
+- **Expo-fetch `FormData` doesn't support `expo-blob` filenames.** A [workaround with `.name`](https://github.com/barthap/media-encryption-demo/blob/570fe289e6be2b487f81eb473dde3e50290afe30/src/utils/tmpfiles.ts#L27) is required. This was noted in [#40586](https://github.com/expo/expo/pull/40586#discussion_r2478885133) too.
 - **No native `Uint8Array` → `SharedRef<'image'>` conversion**: Expo's architecture lacks direct binary-to-ImageRef conversion. The `expo-image` module only accepts URIs or assets, not raw binary data. Custom [ImageLoader module](#image-loader-module) was necessary to fs/data-url workarounds.
 - **Limited base64 ecosystem support**:
   - Legacy `FileSystem.writeAsStringAsync()` requires `encoding: FileSystem.EncodingType.Base64` but many APIs don't accept this parameter
   - No easy obvious way of converting base64 string into blob or array buffer, and vice versa. And, as mentioned above, `atob()` / `btoa()` lack performance.
+- `expo-clipboard` could accept `ImageRef` for copying and allow pasting as `ImageRef` too. It would be more convenient than base64.
 
 **File System Limitations:**
 
