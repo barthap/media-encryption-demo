@@ -2,6 +2,8 @@
 
 A demonstration app showcasing binary data manipulation across various Expo libraries using image data as an example. The app demonstrates encrypted image workflows, from client-side encryption to secure storage on external hosting and later retrieval.
 
+https://github.com/user-attachments/assets/25ff87c3-a5b1-4c5c-a0ec-67aeac73bf67
+
 ## Overview
 
 The app implements the following workflow:
@@ -20,7 +22,6 @@ _Note: UI styling is vibe-coded. Looking pretty is not the main purpose of this 
 
    ```bash
    bun install
-
    ```
 
 3. Build the app and start the development server:
@@ -53,20 +54,20 @@ to keep all the interesting code in one place.
 
 ```
 ├── src/
-│   ├── app/                    # Expo Router app structure
+│   ├── app/                   # Expo Router app structure
 │   │   ├── (tabs)/            # Tab-based navigation
 │   │   │   ├── upload.tsx     # Upload workflow screen
 │   │   │   └── download.tsx   # Download workflow screen
-│   ├── business-logic/        # Core encryption/decryption logic
-│   ├── components/           # Reusable UI components
-│   ├── hooks/               # Custom React hooks
-│   ├── utils/               # Utility functions
-│   └── imports/             # Platform-specific imports with web workarounds
+│   ├── business-logic/        # Core app logic
+│   ├── components/            # Reusable UI components
+│   ├── hooks/                 # Custom React hooks
+│   ├── utils/                 # Utility functions
+│   └── imports/               # Platform-specific imports with web workarounds
 ├── modules/
-│   ├── aes-crypto/          # Custom AES encryption Expo module
-│   └── image-loader/        # Custom image loading utilities
-├── cors-proxy/              # CORS proxy server for web downloads
-└── assets/                  # Static assets (images, etc.)
+│   ├── aes-crypto/            # Custom AES encryption Expo module
+│   └── image-loader/          # Custom image loading utilities
+├── cors-proxy/                # CORS proxy server for web downloads
+└── assets/                    # Static assets (images, etc.)
 ```
 
 ## Custom Modules
