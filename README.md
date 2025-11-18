@@ -152,10 +152,10 @@ The following TODO/FIXME comments address issues not necessarily covered in the 
 
 **[See all](<https://github.com/search?q=repo:barthap/media-encryption-demo+/(TODO%7CFIXME)/&type=code>)**
 
-**Subjects to deprecation:**
+**Potential subjects to deprecation:**
 
-- Clipboard event's `content` property is deprecated for very long. Should it be finally removed?
-- Clipboard has the `Clipboard.removeClipboardListener(listener)` function. AFAIK, APIs generally migrate from this syntax to the `subsciption.remove()`. Should we do the same and deprecate it?
+- Clipboard event's `content` property has been deprecated for very long. Should it be finally removed?
+- Clipboard has the `Clipboard.removeClipboardListener(listener)` function. AFAIK, APIs generally migrate from this syntax to the `subsciption.remove()`. Should this one be deprecated too?
 
 ## CORS Proxy
 
