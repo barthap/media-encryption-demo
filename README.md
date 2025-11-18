@@ -47,7 +47,9 @@ The app provides two main screens accessible via tabs:
 
 ## Repository Structure
 
-Most of the relevant code is in the `src/business-logic/` to keep all the interesting code in one place.
+Most of the relevant code is in the
+[`src/business-logic/`](https://github.com/barthap/media-encryption-demo/blob/9ea8b51f5943d40c5b1df8989e193c78c2996e32/src/business-logic/index.ts)
+to keep all the interesting code in one place.
 
 ```
 ├── src/
@@ -71,18 +73,23 @@ Most of the relevant code is in the `src/business-logic/` to keep all the intere
 
 ### AES Crypto Module
 
-Since `expo-crypto` doesn't include AES encryption, this project includes a custom native module providing:
+Since `expo-crypto` doesn't include AES encryption, this project includes a
+custom native module providing:
 
 - Secure random key generation and import/export
 - AES 128/192/256 GCM encryption/decryption with AAD authentication
 - Portable `SealedData` format for encrypted data
 - Platform support: iOS (CryptoKit), Android (javax.crypto.Cipher), Web (SubtleCrypto)
 
-See [modules/aes-crypto/README.md](modules/aes-crypto/README.md) for detailed API documentation.
+See [modules/aes-crypto/README.md](modules/aes-crypto/README.md)
+for detailed API documentation.
 
 ### Image Loader Module
 
-Custom module for converting `Uint8Array` to `SharedRef<'image'>`, enabling direct image manipulation from binary data. Neither `expo-image` or `expo-image-manipulator` is able to do that directly, without filesystem- or base64-data-url-intermediates, or other workarounds.
+Custom module for converting `Uint8Array` to `SharedRef<'image'>`, enabling
+direct image manipulation from binary data. Neither `expo-image`
+or `expo-image-manipulator` is able to do that directly, without filesystem-
+or base64-data-url-intermediates, or other workarounds.
 
 ## Known Issues and Development Notes
 
@@ -91,14 +98,14 @@ Based on development experience and code analysis, several issues and limitation
 ### Platform-Specific Issues
 
 - **iOS/Android**:
-  - FileSystem file creation for user-picked directory (outside documents/cache dir) differ significantly. Probably due to SAF. See TODO: file link
-    It might be good to create some documentation / examples.
+  - FileSystem file creation for user-picked directory (outside documents/cache dir) [differ significantly](https://github.com/barthap/media-encryption-demo/blob/9ea8b51f5943d40c5b1df8989e193c78c2996e32/src/business-logic/index.ts#L177). Probably due to SAF. It might be good to create some documentation / examples.
 - **iOS**:
-  - `expo-image` enforces ATS (App Transport Security) - `Image.loadAsync()` with `http://` URLs doesn't work. Only `https://` URLs accepted. I have not found any documentation about this.
+  - `expo-image` enforces ATS (App Transport Security) - `Image.loadAsync()` with `http://` URLs doesn't work. Only `https://` URLs accepted. I have not found any documentation about this. Bad thing is that the image just silently fails to render, there's no developer warning.
 - **Android**:
-  - `FileSystem.Directory.createFile()`, when `mimeType` argument is null, ignores file extension, forces `text/plain` → `.txt` extension regardless of filename like `image.jpg`. SAF (Storage Access Framework) limitation, but perhaps we could best-effort determine MIME type?.
-  - `ExpoImage.loadAsync().mediaType` is unavailable on Android.
-  - **MediaLibrary asset creation permissions**: `MediaLibrary.Asset.create()` doesn't work with `writeOnly: true, granularPermissions: ['photo']`. It requires `writeOnly: false` which is counter-intuitive since I want only to create asset, not read it. Perhaps should be better documented.
+
+  - `FileSystem.Directory.createFile()`, when `mimeType` argument is null, ignores file extension, forces `text/plain` → `.txt` extension regardless of filename like `image.jpg`. SAF (Storage Access Framework) limitation, but perhaps we could best-effort determine MIME type?. ([code link](https://github.com/barthap/media-encryption-demo/blob/9ea8b51f5943d40c5b1df8989e193c78c2996e32/src/business-logic/index.ts#L196))
+  - **MediaLibrary asset creation permissions**: `MediaLibrary.Asset.create()` [doesn't work](https://github.com/barthap/media-encryption-demo/blob/9ea8b51f5943d40c5b1df8989e193c78c2996e32/src/business-logic/index.ts#L133) with `writeOnly: true, granularPermissions: ['photo']`. It requires `writeOnly: false` which is counter-intuitive since I want only to create asset, not read it. Perhaps should be better documented.
+
 - **Web**:
   - `expo-blob` import fails: `TypeError: _expoBlob.Blob is not a constructor`. The reason is that on native, the name is [exported as `Blob`](https://github.com/expo/expo/blob/c50194ee47cc9f0f8bc30ce12442db81bb14d8f2/packages/expo-blob/src/ExpoBlob.ts#L23), but on web [as `ExpoBlob`](https://github.com/expo/expo/blob/main/packages/expo-blob/src/ExpoBlob.web.ts).
     - Workaround: conditional import via `@/imports/expo-blob.web.ts`. It imports it as correct name
@@ -133,15 +140,16 @@ Based on development experience and code analysis, several issues and limitation
     - expo-image-manipulator implementation has `saveAsync()` which is missing in expo-image.
   - It would be nice to have a way to somehow move between implementations from JS code.
 - **Inconsistent MIME type detection**:
-  - `FileSystem.File.type` property returns `null` for newly created files (also after `file.write()`) until platform file system updates metadata. Is there a way to force-flush written content and trigger MIME detection?
-  - When working with array buffers, often manual magic byte detection is required to infer MIME type or file extension. (`modules/image-loader/src/ImageLoaderModule.web.ts:15`)
+  - `FileSystem.File.type` property returns `null` for newly created files (also after `file.write()`) until platform file system updates metadata. Is there a way to force-flush written content and trigger MIME detection? Something like `File.reload()` could be helpful.
+  - `ExpoImage.loadAsync().mediaType` is unavailable on Android ([expected](https://github.com/expo/expo/blob/080fe0db96b352ff3aeddc0e4a8c2c1d84e02f1d/packages/expo-image/android/src/main/java/expo/modules/image/ExpoImageModule.kt#L180)).
+  - When working with array buffers, often manual magic byte detection is required to infer MIME type or file extension. ([this function](https://github.com/search?q=repo:barthap/media-encryption-demo%20inferFileExtensionFromMagicBytes&type=code))
     - In this demo, this is more an app-specific issue: it's caused by the fact that original image metadata is lost when saving encrypted data to file, instead of uploading it to tmpfiles (there metadata is held in the context value).
 
 ### Additional Code Comments Requiring Attention
 
-The following TODO/FIXME comments address issues not covered in the limitations above:
+The following TODO/FIXME comments address issues not necessarily covered in the limitations above:
 
-- GH search link here
+**[See all](<https://github.com/search?q=repo:barthap/media-encryption-demo+/(TODO%7CFIXME)/&type=code>)**
 
 **Subjects to deprecation:**
 
