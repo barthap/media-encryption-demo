@@ -51,7 +51,7 @@ public class ImageLoaderModule: Module {
   }
 }
 
-public final class CannotLoadError: Exception {
+public final class CannotLoadError: Exception, @unchecked Sendable {
   override public var reason: String {
     "Cannot load image from data"
   }
