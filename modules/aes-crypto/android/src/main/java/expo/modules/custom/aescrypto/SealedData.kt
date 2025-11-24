@@ -5,8 +5,7 @@ import java.nio.ByteBuffer
 import javax.crypto.Cipher
 
 class SealedData(
-    val ivLength: Int,
-    val tagLength: Int,
+    private val config: SealedDataConfig,
     private val content: ByteArray,
 ): SharedObject() {
     init {
@@ -16,16 +15,14 @@ class SealedData(
     }
 
     constructor(iv: ByteArray, tagLength: Int, ciphertextLength: Int) : this(
-        ivLength = iv.size,
-        tagLength = tagLength,
+        config = SealedDataConfig(ivLength = iv.size, tagLength = tagLength),
         content = ByteArray(iv.size + ciphertextLength + tagLength).init {
             put(iv)
         }
     )
 
     constructor(iv: ByteArray, ciphertextWithTag: ByteArray, tagLength: Int) : this(
-        ivLength = iv.size,
-        tagLength = tagLength,
+        config = SealedDataConfig(ivLength = iv.size, tagLength = tagLength),
         content = ByteArray(iv.size + ciphertextWithTag.size).init {
             put(iv)
             put(ciphertextWithTag)
@@ -37,6 +34,11 @@ class SealedData(
 
     private val ivBuffer: ByteBuffer
         get() = ByteBuffer.wrap(content, 0, ivLength)
+
+    val ivLength: Int
+        get() = config.ivLength
+    val tagLength: Int
+        get() = config.tagLength
 
     // copies
     var ivBytes: ByteArray

@@ -1,5 +1,8 @@
-import type { StyleProp, ViewStyle } from 'react-native';
-
+/**
+ * Represents input data that can be serialized for encryption.
+ * It can be a string, ArrayBuffer, Blob, or Uint8Array.
+ */
+export type SerializableInput = string | ArrayBuffer | Uint8Array;
 
 export enum KeySize {
   AES128 = 128,
@@ -7,43 +10,61 @@ export enum KeySize {
   AES256 = 256,
 }
 
-export declare class SymmetricKey {
-  constructor(bytes: Uint8Array)
-  constructor(size?: KeySize)
-
-  size: KeySize;
-  bytes(): Promise<Uint8Array>;
+export interface SealedDataConfig {
+  /*
+   * The length of the initialization vector. Defaults to 12.
+   */
+  ivLength: number;
+  /*
+   * The length of the authentication tag. Defaults to 16.
+   */
+  tagLength: number;
 }
 
-export declare class SealedData {
-  // TODO: Class cannot have multiple constructors
-  // use static functions instead
-  constructor(combined: Uint8Array, ivLength: number, tagLength?: number);
-  constructor(iv: Uint8Array, ciphertextWithTag: Uint8Array, tagLength?: number);
-
-  ivSize: number;
-  tagSize: number;
-  combinedSize: number;
-
-  iv(): Uint8Array;
-  combined(): Uint8Array;
-  ciphertext(includeTag?: boolean): Uint8Array;
+interface CommonDecryptOptions {
+  output?: 'bytes' | 'base64'
+  /**
+   * Additional GCM authenticated data.
+   */
+  additionalData?: SerializableInput;
 }
 
-export type OnLoadEventPayload = {
-  url: string;
-};
+export interface Base64DecryptOptions extends CommonDecryptOptions {
+  output: 'base64'
+}
 
-export type AesCryptoModuleEvents = {
-  onChange: (params: ChangeEventPayload) => void;
-};
+export interface ArrayBufferDecryptOptions extends CommonDecryptOptions {
+  output?: 'bytes'
+}
 
-export type ChangeEventPayload = {
-  value: string;
-};
+export type DecryptOptions = Base64DecryptOptions | ArrayBufferDecryptOptions
 
-export type AesCryptoViewProps = {
-  url: string;
-  onLoad: (event: { nativeEvent: OnLoadEventPayload }) => void;
-  style?: StyleProp<ViewStyle>;
-};
+/**
+ * Configuration for generating a nonce during encryption.
+ * Can specify either the length of the IV to generate or provide an IV directly.
+ */
+type NonceParam = { length: number } | { bytes: Uint8Array };
+
+/**
+ * Options for the encryption process.
+ */
+export interface EncryptOptions {
+  /**
+   * Parameters for nonce generation.
+   * Defaults to a 12-byte random value.
+   */
+  nonce?: NonceParam;
+
+  /**
+   * The length of the authentication tag. 
+   * Defaults to 16 bytes.
+   * @ios: Not configurable, iOS will always create a 16 byte tag
+   */
+  tagLength?: number;
+
+  /**
+   * Additional GCM authenticated data.
+   */
+  additionalData?: SerializableInput;
+}
+

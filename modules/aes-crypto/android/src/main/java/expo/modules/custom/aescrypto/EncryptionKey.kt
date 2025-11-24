@@ -5,7 +5,6 @@ import expo.modules.kotlin.types.Enumerable
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.SecretKeySpec
-import kotlin.getValue
 
 private const val ALGORITHM_AES = "AES"
 
@@ -22,11 +21,11 @@ enum class KeySize(val value: Int): Enumerable {
 
         fun fromByteLength(byteLen: Int): KeySize = requireNotNull(
             entries.find { it.value == byteLen * 8 }
-        ) { "SymmetricKey cannot be created from bytes of length '$byteLen'"}
+        ) { "EncryptionKey cannot be created from bytes of length '$byteLen'"}
     }
 }
 
-class SymmetricKey: SharedObject {
+class EncryptionKey: SharedObject {
     val keySize: KeySize
     private val nativeInstance: SecretKey
 
@@ -51,4 +50,5 @@ class SymmetricKey: SharedObject {
         get() = nativeInstance.encoded
 
     override fun getAdditionalMemoryPressure(): Int = keySize.byteSize
+
 }

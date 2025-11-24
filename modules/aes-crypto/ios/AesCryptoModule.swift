@@ -2,7 +2,68 @@ import ExpoModulesCore
 import CryptoKit
 import CommonCrypto
 
+let DEFAULT_IV_LENGTH = 12
 let DEFAULT_TAG_LENGTH = 16
+
+enum DataEncoding: String, Enumerable {
+    case base64
+    case hex
+}
+
+enum OutputFormat: String, Enumerable {
+    case bytes
+    case base64
+}
+
+internal struct SealedDataConfig: Record {
+    @Field
+    var ivLength: Int = DEFAULT_IV_LENGTH
+    
+    @Field
+    var tagLength: Int = DEFAULT_TAG_LENGTH
+}
+
+internal struct CiphertextOptions: Record {
+    @Field
+    var includeTag: Bool = false
+    
+    @Field
+    var outputFormat: OutputFormat = .bytes
+}
+
+internal struct EncryptOptions: Record {
+    // either IV bytes or length to generate
+    // TODO: In JS this is a nested Record
+    @Field
+    var nonce: Either<Data, Int>? = nil
+    
+    @Field
+    var additionalData: Data? = nil
+}
+
+internal struct DecryptOptions: Record {
+    @Field
+    var output: OutputFormat = .bytes
+    
+    @Field
+    var additionalData: Data? = nil
+}
+
+typealias SerializableData = Either<Data, String>
+
+extension SerializableData {
+    func intoData() throws -> Data {
+        if let data: Data = self.get() {
+            return data
+        }
+        
+        let base64String = try self.as(String.self)
+        guard let data = Data(base64Encoded: base64String) else {
+            throw InvalidBase64Exception()
+        }
+        return data
+    }
+}
 
 public class AesCryptoModule: Module {
   public func definition() -> ModuleDefinition {
@@ -14,79 +75,82 @@ public class AesCryptoModule: Module {
       AsyncFunction("generateKey", self.generateKey)
       AsyncFunction("importKey", self.importKey)
 
-      Class("SymmetricKey", EncryptionKey.self) {
-          Constructor { (input: Either<KeySize, Data>?) in
-              guard let input = input else {
-                  return EncryptionKey(size: .aes256)
-              }
-              
-              
-              if input.is(KeySize.self) {
-                  return try EncryptionKey(size: input.as(KeySize.self))
-              } else {
-                  return try EncryptionKey(bytes: input.as(Data.self))
-              }
-          }
-              
+      Class("EncryptionKey", EncryptionKey.self) {
               AsyncFunction("bytes") { (key: EncryptionKey) in key.bytes }
+              AsyncFunction("encoded") { (key: EncryptionKey, encoding: DataEncoding) in
+                  key.encoded(with: encoding)
+              }
               Property("size") { (key: EncryptionKey) in key.keySize }
           }
           
           Class("SealedData", SealedData.self) {
-              // TODO: Class cannot have multiple constructors
-              // use static functions instead
-              
-              
-              Constructor { (combined: Data, ivLength: Int, tagLength: Int?) in
-                  try SealedData(ivLength: ivLength, tagLength: tagLength ?? DEFAULT_TAG_LENGTH, content: combined)
+              StaticFunction("fromCombined") { (combined: SerializableData, config: SealedDataConfig?) in
+                  let config = config ?? SealedDataConfig()
+                  
+                  return try SealedData(ivLength: config.ivLength,
+                                 tagLength: config.tagLength,
+                                 content: combined.intoData())
               }
-              
-              
-              Constructor { (iv: Data, ciphertextWithTag: Data, tagLength: Int?) in
-                  try SealedData(iv: iv,
-                                 ciphertextWithTag: ciphertextWithTag,
-                                 tagLength: tagLength ?? DEFAULT_TAG_LENGTH)
+              StaticFunction("fromNonceAndCiphertext") { (iv: Data, ciphertext: Data, tag: Either<Data, Int>?) in
+                  if let tagData: Data = tag?.get() {
+                      return try SealedData(iv: iv,
+                                            ciphertext: ciphertext,
+                                            tag: tagData)
+                  }
+                  
+                  let tagLength: Int = tag?.get() ?? DEFAULT_TAG_LENGTH
+                  return try SealedData(iv: iv,
+                                 ciphertextWithTag: ciphertext,
+                                 tagLength: tagLength)
               }
-
-              
               
               Property("combinedSize") { (sealedData: SealedData) in sealedData.combined.count }
               Property("ivSize") { (sealedData: SealedData) in  sealedData.iv.count }
               Property("tagSize") { (sealedData: SealedData) in  sealedData.tag.count }
               
-              Function("iv") { (sealedData: SealedData) in
-                  sealedData.iv
+              AsyncFunction("iv") { (sealedData: SealedData, format: OutputFormat?) -> Any in
+                  sealedData.iv.formatted(with: format)
               }
-              Function("combined") { (sealedData: SealedData) in
-                  sealedData.combined
+              AsyncFunction("tag") { (sealedData: SealedData, format: OutputFormat?) -> Any in
+                  sealedData.tag.formatted(with: format)
               }
-              Function("ciphertext") { (sealedData: SealedData, includeTag: Bool?) in
-                  let ivLength = sealedData.iv.count
-                  let ciphertextWithTag = sealedData.combined.advanced(by: ivLength)
-                  
-                  if (includeTag ?? false) {
-                      return ciphertextWithTag
-                  }
-                  
-                  let tagLength = sealedData.tag.count
-                  return ciphertextWithTag.dropLast(tagLength)
-                  
+              AsyncFunction("combined") { (sealedData: SealedData, format: OutputFormat?) -> Any in
+                  sealedData.combined.formatted(with: format)
+              }
+              AsyncFunction("ciphertext") { (sealedData: SealedData, options: CiphertextOptions?) -> Any in
+                  sealedData
+                      .ciphertext(withTag: options?.includeTag ?? false)
+                      .formatted(with: options?.outputFormat)
               }
           }
       }
     
     private func generateKey(size: KeySize?) -> EncryptionKey {
-        return EncryptionKey(size: size ?? KeySize.aes256)
+        EncryptionKey(size: size ?? KeySize.aes256)
     }
     
-    private func importKey(keyBytes: Data) throws -> EncryptionKey {
-        try EncryptionKey(bytes: keyBytes)
-    }
-    
-    private func encrypt(key: EncryptionKey, plaintext: Data, aad: Data?) throws -> SealedData {
-        let iv = AES.GCM.Nonce()
+    private func importKey(rawKey: Either<Data, String>, encoding: DataEncoding?) throws -> EncryptionKey {
+        if rawKey.is(Data.self) {
+            return try EncryptionKey(bytes: rawKey.as(Data.self))
+        }
         
-        let encryptionResult = if let aad = aad {
+        guard let dataEncoding = encoding else {
+            throw MissingEncodingException()
+        }
+        let keyString = try rawKey.as(String.self)
+        return try EncryptionKey(string: keyString, encodedWith: dataEncoding)
+    }
+    
+    private func encrypt(plaintext: Data, key: EncryptionKey, options: EncryptOptions?) throws -> SealedData {
+        let iv = if let bytes: Data = options?.nonce?.get() {
+            try AES.GCM.Nonce(data: bytes)
+        } else if let size: Int = options?.nonce?.get() {
+            try AES.GCM.Nonce(ofSize: size)
+        } else {
+            AES.GCM.Nonce() // defaults to 12-byte nonce
+        }
+        
+        let encryptionResult = if let aad = options?.additionalData {
             try AES.GCM.seal(plaintext,
                              using: key.cryptoKitKey,
                              nonce: iv,
@@ -95,17 +159,20 @@ public class AesCryptoModule: Module {
             try AES.GCM.seal(plaintext, using: key.cryptoKitKey, nonce: iv)
         }
 
-        let sealedData = SealedData(sealedBox: encryptionResult)
-        return sealedData
+        return SealedData(sealedBox: encryptionResult)
     }
     
-    private func decrypt(    key: EncryptionKey,
-                             sealedData: SealedData,
-                             aad: Data?) throws -> Data {
-        let plaintext: Data = if let aad = aad {
+    private func decrypt(sealedData: SealedData,
+                         key: EncryptionKey,
+                         options: DecryptOptions?) throws -> Any {
+        let plaintext: Data = if let aad = options?.additionalData {
             try AES.GCM.open(sealedData.nativeValue, using: key.cryptoKitKey, authenticating: aad)
         } else {
             try AES.GCM.open(sealedData.nativeValue, using: key.cryptoKitKey)
+        }
+        
+        if options?.output == .base64 {
+            return plaintext.base64EncodedData()
         }
         return plaintext
     }
@@ -141,6 +208,20 @@ final class EncryptionKey: SharedObject {
         inner = CryptoKit.SymmetricKey(data: bytes)
     }
     
+    convenience init(string: String, encodedWith encoding: DataEncoding) throws {
+        let data = switch encoding {
+        case .base64:
+            Data(base64Encoded: string)
+        case .hex:
+            Data(hexEncoded: string)
+        }
+        
+        guard let bytes = data else {
+            throw InvalidKeyFormatException()
+        }
+        try self.init(bytes: bytes)
+    }
+    
     var keySize: KeySize {
         KeySize(rawValue: inner.bitCount)!
     }
@@ -153,6 +234,10 @@ final class EncryptionKey: SharedObject {
                 }
             }
         return keyBytes
+    }
+    
+    func encoded(with encoding: DataEncoding) -> String {
+        bytes.getEncoded(with: encoding)
     }
     
     var cryptoKitKey: CryptoKit.SymmetricKey {
@@ -184,17 +269,26 @@ final class SealedData: SharedObject {
         }
     }
     
-    init(iv: Data, ciphertextWithTag: Data, tagLength: Int) throws {
+    init(iv: Data, ciphertext: Data, tag: Data) throws {
         let nonce = try AES.GCM.Nonce(data: iv)
         inner = try AES.GCM.SealedBox(nonce: nonce,
-                                      ciphertext: ciphertextWithTag.dropLast(tagLength),
-                                      tag: ciphertextWithTag.suffix(tagLength))
+                                      ciphertext: ciphertext,
+                                      tag: tag)
+    }
+    
+    convenience init(iv: Data, ciphertextWithTag: Data, tagLength: Int) throws {
+        try self.init(iv: iv,
+                      ciphertext: ciphertextWithTag.dropLast(tagLength),
+                      tag: ciphertextWithTag.suffix(tagLength))
     }
     
     var combined: Data {
-        // TODO: combined works only if IV length is 12
-        // otherwise need to be done manually
-        inner.combined!
+        // combined works only if IV length is 12 bytes
+        if let combined = inner.combined {
+            return combined
+        }
+        
+        return self.iv + inner.ciphertext + self.tag
     }
     
     var iv: Data {
@@ -205,6 +299,13 @@ final class SealedData: SharedObject {
         inner.tag
     }
     
+    func ciphertext(withTag: Bool) -> Data {
+        if withTag {
+            return inner.ciphertext + inner.tag
+        }
+        return inner.ciphertext
+    }
+    
     var nativeValue: AES.GCM.SealedBox { inner }
     
     override func getAdditionalMemoryPressure() -> Int {
@@ -212,8 +313,79 @@ final class SealedData: SharedObject {
     }
 }
 
-final class InvalidKeySizeException : GenericException<Int> {
+final class InvalidKeySizeException : GenericException<Int>, @unchecked Sendable {
     override var reason: String {
-        "Invalid key byte length: \(param)"
+        "Invalid key byte length: '\(param)'"
+    }
+}
+
+final class InvalidKeyFormatException: Exception, @unchecked Sendable {
+    override var reason: String {
+        "Invalid key format provided"
+    }
+}
+
+final class InvalidBase64Exception: Exception, @unchecked Sendable {
+    override var reason: String {
+        "Invalid base64 string"
+    }
+}
+
+final class NonceGenerationFailedException: GenericException<Int>, @unchecked Sendable {
+    override var reason: String {
+        "Failed to generate IV of size '\(param)'"
+    }
+}
+
+final class MissingEncodingException: Exception, @unchecked Sendable {
+    override var reason: String {
+        "Encoding argument must be provided for string inputs"
+    }
+}
+
+extension Data {
+    init?(hexEncoded: String) {
+        let hex = hexEncoded.replacingOccurrences(of: "0x", with: "")
+        guard hex.count.isMultiple(of: 2) else {
+            return nil
+        }
+        
+        let chars = hex.map { $0 }
+        let bytes = stride(from: 0, to: chars.count, by: 2)
+            .map { String(chars[$0]) + String(chars[$0 + 1]) }
+            .compactMap { UInt8($0, radix: 16) }
+        
+        guard hex.count / bytes.count == 2 else { return nil }
+        self.init(bytes)
+    }
+    
+    func getEncoded(with encoding: DataEncoding) -> String {
+        switch encoding {
+        case .base64:
+            self.base64EncodedString()
+        case .hex:
+            self.map { String(format: "%02hhx", $0) }.joined()
+        }
+    }
+    
+    func formatted(with format: OutputFormat?) -> Any {
+        switch format {
+        case .bytes,
+        nil:
+            return self
+        case .base64:
+            return self.base64EncodedString()
+        }
+    }
+}
+
+extension AES.GCM.Nonce {
+    init(ofSize size: Int) throws {
+        var data = Data(count: size)
+        let status = SecRandomCopyBytes(kSecRandomDefault, size, &data)
+        guard status == errSecSuccess else {
+          throw NonceGenerationFailedException(size)
+        }
+        try self.init(data: data)
     }
 }
