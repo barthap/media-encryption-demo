@@ -19,6 +19,7 @@
     }
   },
   "dependencies": {
+    "@expo/ui": "0.2.0-canary-20251120-e46b3cc",
     "@expo/vector-icons": "^15.0.3",
     "@react-navigation/bottom-tabs": "^7.4.0",
     "@react-navigation/elements": "^2.6.3",

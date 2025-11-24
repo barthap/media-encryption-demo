@@ -7,7 +7,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { benchmarked } from "@/utils/benchmarks";
 import { base64toUintArray, uint8ArrayToBase64 } from "@/utils/common";
 import { KeyDerivationAlgorithm, Sha256Kdf } from '@/utils/password';
-import AesCrypto from '@modules/aes-crypto';
+import { AES } from '@modules/aes-crypto';
 import ImageLoader, { ImageRef } from '@modules/image-loader';
 import { randomUUID } from 'expo-crypto';
 import { Alert, Platform } from 'react-native';
@@ -263,12 +263,12 @@ export async function encryptImageWithPasswordAsync(
   }
 
   const keyBytes = await Sha256Kdf.digest(password);
-  const key = await AesCrypto.importKey(keyBytes);
+  const key = await AES.importKey(keyBytes);
 
   const plainImageBuffer = await readUriToArrayBufferAsync(image.uri);
 
-  const sealedData = await AesCrypto.encryptAsync(key, plainImageBuffer);
-  const sealedDataBytes = sealedData.combined();
+  const sealedData = await AES.encryptAsync(plainImageBuffer, key);
+  const sealedDataBytes = await sealedData.combined();
 
   const blob = new ExpoBlob([sealedDataBytes]);
   return blob;
@@ -374,10 +374,11 @@ export async function decryptDataWithPasswordAsync(
   }
 
   const keyBytes = await Sha256Kdf.digest(password);
-  const key = await AesCrypto.importKey(keyBytes);
+  const key = await AES.importKey(keyBytes);
 
-  const sealedData = new AesCrypto.SealedData(encryptedData, 12);
-  return await AesCrypto.decryptAsync(key, sealedData);
+  const sealedData = AES.SealedData.fromCombined(encryptedData);
+  const decrypted = await AES.decryptAsync(sealedData, key);
+  return decrypted;
 }
 
 // Image processing functions
