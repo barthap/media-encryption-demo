@@ -61,5 +61,8 @@
     "internal-ip": "^8.0.1",
     "typescript": "~5.9.2"
   },
-  "private": true
+  "private": true,
+  "patchedDependencies": {
+    "expo-blob@0.1.6": "patches/expo-blob@0.1.6.patch"
+  }
 }

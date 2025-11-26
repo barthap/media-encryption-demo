@@ -108,8 +108,7 @@ Based on development experience and code analysis, several issues and limitation
   - **MediaLibrary asset creation permissions**: `MediaLibrary.Asset.create()` [doesn't work](https://github.com/barthap/media-encryption-demo/blob/9ea8b51f5943d40c5b1df8989e193c78c2996e32/src/business-logic/index.ts#L133) with `writeOnly: true, granularPermissions: ['photo']`. It requires `writeOnly: false` which is counter-intuitive since I want only to create asset, not read it. Perhaps should be better documented.
 
 - **Web**:
-  - `expo-blob` import fails: `TypeError: _expoBlob.Blob is not a constructor`. The reason is that on native, the name is [exported as `Blob`](https://github.com/expo/expo/blob/c50194ee47cc9f0f8bc30ce12442db81bb14d8f2/packages/expo-blob/src/ExpoBlob.ts#L23), but on web [as `ExpoBlob`](https://github.com/expo/expo/blob/main/packages/expo-blob/src/ExpoBlob.web.ts).
-    - Workaround: conditional import via `@/imports/expo-blob.web.ts`. It imports it as correct name
+  - ~~`expo-blob` import fails: `TypeError: _expoBlob.Blob is not a constructor`.~~ Fixed in [#41195](https://github.com/expo/expo/pull/41195). Until the fix is released, `bun patch` is used in this repo.
   - `ExpoClipboard` listener on web. Error: `TypeError: ExpoClipboard.default.addListener is not a function`. Not sure if this is my mistake or some other issue.
     - Interesting fact is that the function is named [`addClipboardListener`](https://github.com/expo/expo/blob/c50194ee47cc9f0f8bc30ce12442db81bb14d8f2/packages/expo-clipboard/src/web/ClipboardModule.ts#L177) but it's somewhere translated to `addListener` which doesn't exist.
   - `expo-media-library/next` has no web implementation, causing bundler errors when imported.

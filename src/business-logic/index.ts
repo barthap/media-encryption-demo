@@ -1,3 +1,4 @@
+import { Blob as ExpoBlob } from 'expo-blob';
 import Constants from 'expo-constants';
 import * as Clipboard from 'expo-clipboard';
 import * as FileSystem from 'expo-file-system';
@@ -12,7 +13,6 @@ import ImageLoader, { ImageRef } from '@modules/image-loader';
 import { randomUUID } from 'expo-crypto';
 import { Alert, Platform } from 'react-native';
 
-import { ExpoBlob } from '@/imports/expo-blob';
 import * as MediaLibrary from '@/imports/media-library-next';
 
 

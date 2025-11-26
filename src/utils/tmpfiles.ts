@@ -1,4 +1,4 @@
-import { ExpoBlob } from "@/imports/expo-blob";
+import { Blob as ExpoBlob } from 'expo-blob';
 import { fetch } from 'expo/fetch';
 import { Platform } from 'react-native';
 

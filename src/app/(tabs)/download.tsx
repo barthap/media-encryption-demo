@@ -1,3 +1,4 @@
+import { Blob as ExpoBlob } from 'expo-blob';
 import { Image } from 'expo-image';
 import * as React from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput } from 'react-native';
@@ -29,7 +30,6 @@ import { messageForException } from '@/utils/error';
 import { KeyDerivationAlgorithm } from '@/utils/password';
 import { runCatching } from '@/utils/result';
 import { useExpirationTime } from '@/hooks/use-expiration-time';
-import { ExpoBlob } from '@/imports/expo-blob';
 
 type DownloadStep = 'load' | 'decrypt' | 'display';
 
