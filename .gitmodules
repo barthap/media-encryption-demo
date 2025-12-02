@@ -1,0 +1,3 @@
+[submodule "expo-argon2"]
+	path = modules/expo-argon2
+	url = https://github.com/barthap/expo-argon2.git
