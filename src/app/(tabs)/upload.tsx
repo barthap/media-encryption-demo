@@ -112,7 +112,7 @@ interface EncryptionStepProps {
 function EncryptionStep({ image, onEncrypted }: EncryptionStepProps) {
   const [password, setPassword] = React.useState('');
   const [encryptionStatus, setEncryptionStatus] = React.useState<EncryptionStatus>('not started');
-  const [kdfAlgorithm, setKDF] = React.useState<KeyDerivationAlgorithm>('sha256');
+  const [kdfAlgorithm, setKDF] = React.useState<KeyDerivationAlgorithm>('argon2');
 
   const handleEncrypt = async () => {
     if (!password) return;

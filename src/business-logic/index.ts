@@ -7,7 +7,7 @@ import * as ImagePicker from 'expo-image-picker';
 
 import { benchmarked } from "@/utils/benchmarks";
 import { base64toUintArray, uint8ArrayToBase64 } from "@/utils/common";
-import { KeyDerivationAlgorithm, Sha256Kdf } from '@/utils/password';
+import { KeyDerivationAlgorithm, getHasher } from '@/utils/password';
 import { AES } from '@modules/aes-crypto';
 import ImageLoader, { ImageRef } from '@modules/image-loader';
 import { randomUUID } from 'expo-crypto';
@@ -256,14 +256,9 @@ async function readUriToArrayBufferAsync(uri: string): Promise<Uint8Array> {
 export async function encryptImageWithPasswordAsync(
   image: PickedImage,
   password: string,
-  kdfAlgorithm: KeyDerivationAlgorithm = 'sha256'
+  kdfAlgorithm: KeyDerivationAlgorithm
 ): Promise<ExpoBlob> {
-  if (kdfAlgorithm !== 'sha256') {
-    throw new Error(`KDF '${kdfAlgorithm}' is not implemented yet`);
-  }
-
-  const keyBytes = await Sha256Kdf.digest(password);
-  const key = await AES.importKey(keyBytes);
+  const key = await getHasher(kdfAlgorithm).hash(password);
 
   const plainImageBuffer = await readUriToArrayBufferAsync(image.uri);
 
@@ -367,14 +362,9 @@ export async function loadEncryptedDataFromFileAsync(): Promise<Uint8Array | nul
 export async function decryptDataWithPasswordAsync(
   encryptedData: Uint8Array,
   password: string,
-  kdfAlgorithm: KeyDerivationAlgorithm = 'sha256'
+  kdfAlgorithm: KeyDerivationAlgorithm
 ): Promise<Uint8Array> {
-  if (kdfAlgorithm !== 'sha256') {
-    throw new Error(`KDF '${kdfAlgorithm}' is not implemented yet`);
-  }
-
-  const keyBytes = await Sha256Kdf.digest(password);
-  const key = await AES.importKey(keyBytes);
+  const key = await getHasher(kdfAlgorithm).hash(password);
 
   const sealedData = AES.SealedData.fromCombined(encryptedData);
   const decrypted = await AES.decryptAsync(sealedData, key);
@@ -496,5 +486,5 @@ async function inferFileExtensionAndRename(file: FileSystem.File) {
   } catch (e) {
     console.log('Failed to infer file extension:', e);
   }
-
 }
+

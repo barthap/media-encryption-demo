@@ -160,7 +160,7 @@ interface DecryptStepProps {
 function DecryptStep({ encryptedData, onDecrypted }: DecryptStepProps) {
   const [password, setPassword] = React.useState('');
   const [decryptionStatus, setDecryptionStatus] = React.useState<DecryptionStatus>('not started');
-  const [kdfAlgorithm, setKDF] = React.useState<KeyDerivationAlgorithm>('sha256');
+  const [kdfAlgorithm, setKDF] = React.useState<KeyDerivationAlgorithm>('argon2');
 
   const handleDecrypt = async () => {
     if (!password) return;

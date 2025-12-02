@@ -4,8 +4,8 @@ import { disabled, pickerStyle, tag } from "@expo/ui/swift-ui/modifiers";
 import React from "react";
 
 const kdfAlgorithms: { key: KeyDerivationAlgorithm, value: string, disabled?: boolean }[] = [
+  { key: 'argon2', value: 'Argon2id' },
   { key: 'sha256', value: 'SHA-256' },
-  { key: 'argon2', value: 'Argon2id', disabled: true },
   { key: 'pbkdf2', value: 'PBKDF2', disabled: true },
 ];
 
