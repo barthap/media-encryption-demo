@@ -74,7 +74,7 @@ to keep all the interesting code in one place.
 
 ### AES Crypto Module
 
-Since `expo-crypto` doesn't include AES encryption, this project includes a
+Since `expo-crypto` doesn't yet include AES encryption (there's a [pull request](https://github.com/expo/expo/pull/41249)), this project includes a
 custom native module providing:
 
 - Secure random key generation and import/export
@@ -91,6 +91,10 @@ Custom module for converting `Uint8Array` to `SharedRef<'image'>`, enabling
 direct image manipulation from binary data. Neither `expo-image`
 or `expo-image-manipulator` is able to do that directly, without filesystem-
 or base64-data-url-intermediates, or other workarounds.
+
+### Expo Argon2
+
+Git submodule for [expo-argon2](https://github.com/barthap/expo-argon2/tree/main) - implementation of the [Argon2](https://en.wikipedia.org/wiki/Argon2) Key derivation function, the most recommended password hashing algorithm.
 
 ## Known Issues and Development Notes
 

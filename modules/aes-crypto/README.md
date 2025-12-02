@@ -1,7 +1,7 @@
 # Expo AES Crypto
 
-NOTE: Ideally, this module should be integrated into `expo-crypto` when API here
-is stabilized.
+> [!NOTE]
+> This API is going to be integrated into `expo-crypto`. See [pull request](https://github.com/expo/expo/pull/41249).
 
 **Main features:**
 
