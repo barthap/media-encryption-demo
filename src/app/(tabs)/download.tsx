@@ -1,6 +1,7 @@
 import { Blob as ExpoBlob } from 'expo-blob';
 import { Image } from 'expo-image';
 import * as React from 'react';
+import { ErrorBoundary } from 'react-error-boundary';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput } from 'react-native';
 
 import { ExternalLink } from '@/components/external-link';
@@ -30,6 +31,7 @@ import { messageForException } from '@/utils/error';
 import { KeyDerivationAlgorithm } from '@/utils/password';
 import { runCatching } from '@/utils/result';
 import { useExpirationTime } from '@/hooks/use-expiration-time';
+import { InMemoryImage } from '@/components/in-memory-image';
 
 type DownloadStep = 'load' | 'decrypt' | 'display';
 
@@ -59,13 +61,12 @@ function LoadStep({ encryptedData, onDataLoaded }: LoadStepProps) {
   const uploadedDataUrl = uploadedImage?.info.directURL;
   const expiresIn = useExpirationTime(uploadedImage?.info.expires ?? null);
 
-  const [downloadInProgress, setDownloadInProgress] = React.useState(false);
-  const [loadInProgress, setLoadInProgress] = React.useState(false);
+  const [downloadInProgress, startDownload] = React.useTransition();
+  const [loadInProgress, startLoading] = React.useTransition();
 
   const downloadFromHosting = async () => {
     if (!uploadedDataUrl) return;
 
-    setDownloadInProgress(true);
     try {
       const data = await downloadEncryptedDataAsync(uploadedDataUrl);
       onDataLoaded(data);
@@ -73,13 +74,10 @@ function LoadStep({ encryptedData, onDataLoaded }: LoadStepProps) {
       console.warn('Download failed:', e);
       Alert.alert('Download failed', messageForException(e) ?? 'Unknown error');
     }
-    setDownloadInProgress(false);
   };
 
   const loadFromFileSystem = async () => {
-    setLoadInProgress(true);
     const result = await runCatching(loadEncryptedDataFromFileAsync);
-    setLoadInProgress(false);
 
     if (!result.success) {
       Alert.alert('Loading failed', result.reason);
@@ -109,7 +107,7 @@ function LoadStep({ encryptedData, onDataLoaded }: LoadStepProps) {
       <ThemedView style={{ flexDirection: 'row', gap: 12, marginTop: 12 }}>
         <Button
           title="Download"
-          onPress={downloadFromHosting}
+          onPress={() => startDownload(downloadFromHosting)}
           loading={downloadInProgress}
           style={{ flex: 1 }}
         />
@@ -141,7 +139,7 @@ function LoadStep({ encryptedData, onDataLoaded }: LoadStepProps) {
       >
         <Button
           title="Load from files"
-          onPress={loadFromFileSystem}
+          onPress={() => startLoading(loadFromFileSystem)}
           loading={loadInProgress}
         />
       </SectionCard>
@@ -218,29 +216,9 @@ interface DisplayStepProps {
   uploadedImageMetadata?: { filename?: string };
 }
 function DisplayStep({ decryptedData, uploadedImageMetadata }: DisplayStepProps) {
-  const [imageRef, setImageRef] = React.useState<ImageRef | null>(null);
   const [savedImageUrl, setSavedImageUrl] = React.useState<string | null>(null);
-  const [loadingInMemory, setLoadingInMemory] = React.useState(true);
   const [savingToFs, setSavingToFs] = React.useState(false);
 
-  // Load image in memory when component mounts
-  React.useEffect(() => {
-    const loadInMemory = async () => {
-      setLoadingInMemory(true);
-      try {
-        const image = await loadImageInMemoryAsync(decryptedData);
-        setImageRef(image);
-        const { width, height } = image;
-        console.log('Loaded image dimensions:', { width, height });
-      } catch (e) {
-        console.warn('Failed to load image in memory:', e);
-        Alert.alert('Loading failed', messageForException(e) ?? 'Unknown error');
-      }
-      setLoadingInMemory(false);
-    };
-
-    loadInMemory();
-  }, [decryptedData]);
 
   const saveToFileSystem = async () => {
     setSavingToFs(true);
@@ -303,16 +281,10 @@ function DisplayStep({ decryptedData, uploadedImageMetadata }: DisplayStepProps)
       <ThemedText type="subtitle" style={{ marginBottom: 16 }}>Display decrypted image</ThemedText>
 
       <SectionCard title="In-memory image" variant="info">
-        {loadingInMemory ? (
-          <ThemedText style={{ textAlign: 'center', fontStyle: 'italic' }}>Loading image in memory...</ThemedText>
-        ) : imageRef ? (
-          <Image
-            source={imageRef}
-            style={{ width: 200, height: 200, alignSelf: 'center', marginVertical: 12 }}
-          />
-        ) : (
-          <ThemedText style={{ color: 'red', textAlign: 'center' }}>Failed to load image in memory</ThemedText>
-        )}
+        <InMemoryImage
+          imageData={decryptedData}
+          style={{ width: 200, height: 200, alignSelf: 'center', marginVertical: 12 }}
+        />
       </SectionCard>
 
       <SectionCard

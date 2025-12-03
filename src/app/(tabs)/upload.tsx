@@ -172,12 +172,10 @@ interface SaveStepProps {
 function SaveStep({ encryptedBlob, image }: SaveStepProps) {
   const hosting = useHostingContext();
 
-  const [uploadInProgress, setUploadInProgress] = React.useState(false);
-  const [savingInProgress, setSavingInProgress] = React.useState(false);
+  const [uploadInProgress, startUpload] = React.useTransition();
+  const [savingInProgress, startSaving] = React.useTransition();
 
   const handleUpload = async () => {
-    setUploadInProgress(true);
-
     const { width, height } = image;
     const metadata = {
       width,
@@ -185,8 +183,6 @@ function SaveStep({ encryptedBlob, image }: SaveStepProps) {
       filename: extractFilename(image.uri) ?? 'image.jpg'
     }
     const result = await hosting.uploadFile(encryptedBlob, metadata);
-
-    setUploadInProgress(false);
 
     if (result.success) {
       Alert.alert('Upload successful', `${result.value.webpageURL}`);
@@ -197,11 +193,9 @@ function SaveStep({ encryptedBlob, image }: SaveStepProps) {
   }
 
   const handleSave = async () => {
-    setSavingInProgress(true);
     const result = await runCatching(
       async () => saveFileToFileSystemAsync(encryptedBlob, 'encrypted_image.dat')
     );
-    setSavingInProgress(false);
 
     if (!result.success) {
       console.warn('Save failed:', result.error);
@@ -229,10 +223,10 @@ function SaveStep({ encryptedBlob, image }: SaveStepProps) {
         variant="default"
       >
         <ThemedView style={{ flexDirection: 'row', gap: 12 }} >
-          <Button title="Upload" onPress={handleUpload} loading={uploadInProgress} />
+          <Button title="Upload" onPress={() => startUpload(handleUpload)} loading={uploadInProgress} />
           <Button
             title={Platform.OS === 'web' ? "Save to downloads" : "Save to files"}
-            onPress={handleSave}
+            onPress={() => startSaving(handleSave)}
             loading={savingInProgress}
           />
         </ThemedView>

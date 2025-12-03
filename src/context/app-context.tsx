@@ -33,14 +33,12 @@ const initialAppState: AppState = { status: 'none' };
 
 interface CtxVal {
   uploadState: AppState,
-  setAppState: (newState: AppState) => void
   uploadFile: (data: ExpoBlob, metadata: ImageMetadata) => Promise<Result<UploadInfo>>;
   clearUpload: () => void;
 }
 
 const FileHostingContext = React.createContext<CtxVal>({
   uploadState: initialAppState,
-  setAppState: () => { },
   uploadFile: () => Promise.reject(new Error('Context not set')),
   clearUpload: () => { }
 });
@@ -71,7 +69,6 @@ export default function FileHostingProvider({ children }: React.PropsWithChildre
 
   const ctxValue: CtxVal = {
     uploadState: appState,
-    setAppState,
     uploadFile,
     clearUpload,
   };
