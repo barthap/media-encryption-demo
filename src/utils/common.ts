@@ -1,6 +1,6 @@
 export function extractFilename(path: string): string | null {
   const pathSegments = path.split('/');
-  const filename = pathSegments[pathSegments.length - 1]
+  const filename = pathSegments[pathSegments.length - 1];
   return filename;
 }
 
@@ -8,12 +8,12 @@ export function extractFilename(path: string): string | null {
  * Format bytes as human-readable text.
  *
  * Stolen from [StackOverflow](https://stackoverflow.com/a/14919494)
- * 
+ *
  * @param bytes Number of bytes.
- * @param si True to use metric (SI) units, aka powers of 1000. False to use 
+ * @param si True to use metric (SI) units, aka powers of 1000. False to use
  *           binary (IEC), aka powers of 1024.
  * @param dp Number of decimal places to display.
- * 
+ *
  * @return Formatted string.
  */
 export function humanFileSize(bytes: number, si = false, dp = 1): string {
@@ -33,7 +33,6 @@ export function humanFileSize(bytes: number, si = false, dp = 1): string {
     bytes /= thresh;
     ++u;
   } while (Math.round(Math.abs(bytes) * r) / r >= thresh && u < units.length - 1);
-
 
   return bytes.toFixed(dp) + ' ' + units[u];
 }

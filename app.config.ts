@@ -7,62 +7,62 @@ const corsProxyPort = process.env.CORS_PROXY_PORT || 8079;
 
 module.exports = {
   extra: {
-    corsProxyURL: `http://${corsProxyHost}:${corsProxyPort}`
+    corsProxyURL: `http://${corsProxyHost}:${corsProxyPort}`,
   },
-  "name": "media-encryption-demo",
-  "slug": "media-encryption-demo",
-  "version": "1.0.0",
-  "orientation": "portrait",
-  "icon": "./assets/images/icon.png",
-  "scheme": "mediaencryptiondemo",
-  "userInterfaceStyle": "automatic",
-  "newArchEnabled": true,
-  "ios": {
-    "supportsTablet": true,
-    "bundleIdentifier": "com.anonymous.media-encryption-demo"
+  name: 'media-encryption-demo',
+  slug: 'media-encryption-demo',
+  version: '1.0.0',
+  orientation: 'portrait',
+  icon: './assets/images/icon.png',
+  scheme: 'mediaencryptiondemo',
+  userInterfaceStyle: 'automatic',
+  newArchEnabled: true,
+  ios: {
+    supportsTablet: true,
+    bundleIdentifier: 'com.anonymous.media-encryption-demo',
   },
-  "android": {
-    "adaptiveIcon": {
-      "backgroundColor": "#E6F4FE",
-      "foregroundImage": "./assets/images/android-icon-foreground.png",
-      "backgroundImage": "./assets/images/android-icon-background.png",
-      "monochromeImage": "./assets/images/android-icon-monochrome.png"
+  android: {
+    adaptiveIcon: {
+      backgroundColor: '#E6F4FE',
+      foregroundImage: './assets/images/android-icon-foreground.png',
+      backgroundImage: './assets/images/android-icon-background.png',
+      monochromeImage: './assets/images/android-icon-monochrome.png',
     },
-    "edgeToEdgeEnabled": true,
-    "predictiveBackGestureEnabled": false,
-    "package": "com.anonymous.mediaencryptiondemo"
+    edgeToEdgeEnabled: true,
+    predictiveBackGestureEnabled: false,
+    package: 'com.anonymous.mediaencryptiondemo',
   },
-  "web": {
-    "output": "static",
-    "favicon": "./assets/images/favicon.png"
+  web: {
+    output: 'static',
+    favicon: './assets/images/favicon.png',
   },
-  "plugins": [
-    "expo-router",
+  plugins: [
+    'expo-router',
     [
-      "expo-splash-screen",
+      'expo-splash-screen',
       {
-        "image": "./assets/images/splash-icon.png",
-        "imageWidth": 200,
-        "resizeMode": "contain",
-        "backgroundColor": "#ffffff",
-        "dark": {
-          "backgroundColor": "#000000"
-        }
-      }
+        image: './assets/images/splash-icon.png',
+        imageWidth: 200,
+        resizeMode: 'contain',
+        backgroundColor: '#ffffff',
+        dark: {
+          backgroundColor: '#000000',
+        },
+      },
     ],
-    "expo-font",
-    "expo-image-picker",
+    'expo-font',
+    'expo-image-picker',
     [
-      "expo-build-properties",
+      'expo-build-properties',
       {
         ios: {
           buildReactNativeFromSource: false,
-        }
-      }
-    ]
+        },
+      },
+    ],
   ],
-  "experiments": {
-    "typedRoutes": true,
-    "reactCompiler": true
-  }
-}
+  experiments: {
+    typedRoutes: true,
+    reactCompiler: true,
+  },
+};

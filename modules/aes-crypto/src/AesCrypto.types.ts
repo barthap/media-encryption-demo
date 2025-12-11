@@ -22,7 +22,7 @@ export interface SealedDataConfig {
 }
 
 interface CommonDecryptOptions {
-  output?: 'bytes' | 'base64'
+  output?: 'bytes' | 'base64';
   /**
    * Additional GCM authenticated data.
    */
@@ -30,14 +30,14 @@ interface CommonDecryptOptions {
 }
 
 export interface Base64DecryptOptions extends CommonDecryptOptions {
-  output: 'base64'
+  output: 'base64';
 }
 
 export interface ArrayBufferDecryptOptions extends CommonDecryptOptions {
-  output?: 'bytes'
+  output?: 'bytes';
 }
 
-export type DecryptOptions = Base64DecryptOptions | ArrayBufferDecryptOptions
+export type DecryptOptions = Base64DecryptOptions | ArrayBufferDecryptOptions;
 
 /**
  * Configuration for generating a nonce during encryption.
@@ -56,7 +56,7 @@ export interface EncryptOptions {
   nonce?: NonceParam;
 
   /**
-   * The length of the authentication tag. 
+   * The length of the authentication tag.
    * Defaults to 16 bytes.
    * @ios: Not configurable, iOS will always create a 16 byte tag
    */
@@ -67,4 +67,3 @@ export interface EncryptOptions {
    */
   additionalData?: SerializableInput;
 }
-

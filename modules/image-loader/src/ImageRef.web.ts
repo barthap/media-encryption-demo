@@ -1,4 +1,4 @@
-import { SharedRef } from "expo";
+import { SharedRef } from 'expo';
 
 /**
  * Copied from expo-image's [`ImageRefWeb`]

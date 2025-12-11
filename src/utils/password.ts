@@ -9,7 +9,7 @@ export interface PasswordHasher {
   /**
    * Should return 256-bit long hash of given password
    */
-  hash(password: string): Promise<AES.EncryptionKey>
+  hash(password: string): Promise<AES.EncryptionKey>;
 }
 
 /**
@@ -22,7 +22,7 @@ export class UnsafeSha256Hasher implements PasswordHasher {
     const digestString = await ExpoCrypto.digestStringAsync(
       ExpoCrypto.CryptoDigestAlgorithm.SHA256,
       password,
-      { encoding: ExpoCrypto.CryptoEncoding.HEX }
+      { encoding: ExpoCrypto.CryptoEncoding.HEX },
     );
     const bytes = hexToUintArray(digestString);
     return await AES.importKey(bytes);
@@ -31,9 +31,9 @@ export class UnsafeSha256Hasher implements PasswordHasher {
 
 export interface Argon2Config {
   /**
-     * **Time Cost (`t`)**
-     * The number of iterations or passes over the memory array, controlling the time complexity.
-     */
+   * **Time Cost (`t`)**
+   * The number of iterations or passes over the memory array, controlling the time complexity.
+   */
   timeCost: number;
   /**
    * **Memory Cost (`m`)**
@@ -46,7 +46,7 @@ export interface Argon2Config {
    */
   parallelism: number;
   /**
-   * Salt 
+   * Salt
    * WARN: it is constant for the purpose of this app, but it should be unique for each password and stored alongside!
    */
   salt: string;
@@ -56,7 +56,7 @@ export const defaultArgon2Config: Argon2Config = Object.freeze({
   timeCost: 3,
   memoryCost: 32 * 1024,
   parallelism: 1,
-  salt: '76b8aca35e949e6590965764fee8c9ec'
+  salt: '76b8aca35e949e6590965764fee8c9ec',
 });
 
 export class Argon2Hasher implements PasswordHasher {
@@ -67,17 +67,12 @@ export class Argon2Hasher implements PasswordHasher {
   }
 
   async hash(password: string): Promise<AES.EncryptionKey> {
-    const {
-      salt,
-      timeCost,
-      memoryCost,
-      parallelism,
-    } = this.config;
+    const { salt, timeCost, memoryCost, parallelism } = this.config;
 
     const { rawHash } = await Argon2.hashAsync(password, salt, {
       iterations: timeCost,
       memory: memoryCost,
-      parallelism
+      parallelism,
     });
 
     const bytes = hexToUintArray(rawHash);
@@ -86,10 +81,10 @@ export class Argon2Hasher implements PasswordHasher {
 }
 
 export interface Pbkdf2Config {
-  algorithm: 'sha256',
-  iterations: number,
-  salt: string,
-  keyLength: number,
+  algorithm: 'sha256';
+  iterations: number;
+  salt: string;
+  keyLength: number;
 }
 
 export class Pbkdf2Hasher implements PasswordHasher {
@@ -100,7 +95,7 @@ export class Pbkdf2Hasher implements PasswordHasher {
   }
 
   async hash(password: string): Promise<AES.EncryptionKey> {
-    throw new Error("Unimplemented")
+    throw new Error('Unimplemented');
   }
 }
 
@@ -110,9 +105,11 @@ const Argon2Kdf = new Argon2Hasher();
 
 export function getHasher(alrogirhm: KeyDerivationAlgorithm): PasswordHasher {
   switch (alrogirhm) {
-    case 'sha256': return Sha256Kdf;
-    case 'argon2': return Argon2Kdf;
-    case 'pbkdf2': throw new Error("PBKDF2 Hasher is not implemented yet");
+    case 'sha256':
+      return Sha256Kdf;
+    case 'argon2':
+      return Argon2Kdf;
+    case 'pbkdf2':
+      throw new Error('PBKDF2 Hasher is not implemented yet');
   }
 }
-

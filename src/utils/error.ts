@@ -1,4 +1,3 @@
-
 export function messageForException(e: unknown): string | null {
   if (typeof e === 'string') {
     return e;
@@ -10,4 +9,3 @@ export function messageForException(e: unknown): string | null {
 
   return null;
 }
-

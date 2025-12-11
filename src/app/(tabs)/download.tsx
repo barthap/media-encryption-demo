@@ -1,37 +1,38 @@
 import { Blob as ExpoBlob } from 'expo-blob';
 import { Image } from 'expo-image';
 import * as React from 'react';
-import { ErrorBoundary } from 'react-error-boundary';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput } from 'react-native';
-
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+} from 'react-native';
+import {
+  copyImageToClipboardAsync,
+  decryptDataWithPasswordAsync,
+  downloadEncryptedDataAsync,
+  inferFileExtensionFromMagicBytes,
+  loadEncryptedDataFromFileAsync,
+  saveFileToFileSystemAsync,
+  saveImageToGalleryAsync,
+  saveTempFileAsync,
+} from '@/business-logic';
 import { ExternalLink } from '@/components/external-link';
+import { InMemoryImage } from '@/components/in-memory-image';
+import { KdfAlgorithmPicker } from '@/components/kdf-picker';
+import { StepIndicator, StepItem, StepNavigation } from '@/components/step-based-flow';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedScrollView, ThemedView } from '@/components/themed-view';
 import Button from '@/components/ui/button';
+import { Card, Divider, InfoRow, SectionCard, SuccessCard } from '@/components/ui/cards';
 import { useHostingContext } from '@/context/app-context';
-
-import { ImageRef } from '@modules/image-loader';
-
-import {
-  downloadEncryptedDataAsync,
-  loadEncryptedDataFromFileAsync,
-  decryptDataWithPasswordAsync,
-  loadImageInMemoryAsync,
-  saveTempFileAsync,
-  copyImageToClipboardAsync,
-  saveImageToGalleryAsync,
-  saveFileToFileSystemAsync,
-  inferFileExtensionFromMagicBytes
-} from '@/business-logic';
-import { KdfAlgorithmPicker } from '@/components/kdf-picker';
-import { StepIndicator, StepItem, StepNavigation } from '@/components/step-based-flow';
-import { Card, SectionCard, InfoRow, SuccessCard, Divider } from '@/components/ui/cards';
+import { useExpirationTime } from '@/hooks/use-expiration-time';
 import { humanFileSize } from '@/utils/common';
 import { messageForException } from '@/utils/error';
 import { KeyDerivationAlgorithm } from '@/utils/password';
 import { runCatching } from '@/utils/result';
-import { useExpirationTime } from '@/hooks/use-expiration-time';
-import { InMemoryImage } from '@/components/in-memory-image';
 
 type DownloadStep = 'load' | 'decrypt' | 'display';
 
@@ -45,7 +46,7 @@ type DecryptionStatus = 'not started' | 'in progress' | 'failed' | `finished in 
 const steps: StepItem<DownloadStep>[] = [
   { key: 'load', label: 'Load' },
   { key: 'decrypt', label: 'Decrypt' },
-  { key: 'display', label: 'Display' }
+  { key: 'display', label: 'Display' },
 ];
 
 // Step Components
@@ -57,7 +58,8 @@ interface LoadStepProps {
 function LoadStep({ encryptedData, onDataLoaded }: LoadStepProps) {
   const hosting = useHostingContext();
 
-  const uploadedImage = hosting.uploadState.status === 'image_uploaded' ? hosting.uploadState : null;
+  const uploadedImage =
+    hosting.uploadState.status === 'image_uploaded' ? hosting.uploadState : null;
   const uploadedDataUrl = uploadedImage?.info.directURL;
   const expiresIn = useExpirationTime(uploadedImage?.info.expires ?? null);
 
@@ -100,7 +102,7 @@ function LoadStep({ encryptedData, onDataLoaded }: LoadStepProps) {
         value={expiresIn || 'Unknown'}
         valueStyle={{
           fontWeight: '600',
-          color: expiresIn === 'expired' ? 'red' : 'orange'
+          color: expiresIn === 'expired' ? 'red' : 'orange',
         }}
       />
 
@@ -126,7 +128,9 @@ function LoadStep({ encryptedData, onDataLoaded }: LoadStepProps) {
 
   return (
     <ThemedView>
-      <ThemedText type="subtitle" style={{ marginBottom: 16 }}>Load encrypted data</ThemedText>
+      <ThemedText type="subtitle" style={{ marginBottom: 16 }}>
+        Load encrypted data
+      </ThemedText>
 
       {encryptedDataSection}
 
@@ -145,7 +149,9 @@ function LoadStep({ encryptedData, onDataLoaded }: LoadStepProps) {
       </SectionCard>
 
       {encryptedData && (
-        <SuccessCard message={`Encrypted data loaded (${humanFileSize(encryptedData.length, true)})`} />
+        <SuccessCard
+          message={`Encrypted data loaded (${humanFileSize(encryptedData.length, true)})`}
+        />
       )}
     </ThemedView>
   );
@@ -167,7 +173,11 @@ function DecryptStep({ encryptedData, onDecrypted }: DecryptStepProps) {
       setDecryptionStatus('in progress');
       const timeStart = Date.now();
 
-      const decryptedData = await decryptDataWithPasswordAsync(encryptedData, password, kdfAlgorithm);
+      const decryptedData = await decryptDataWithPasswordAsync(
+        encryptedData,
+        password,
+        kdfAlgorithm,
+      );
 
       const timeEnd = Date.now();
       const statusMessage: DecryptionStatus = `finished in ${timeEnd - timeStart} ms`;
@@ -182,7 +192,9 @@ function DecryptStep({ encryptedData, onDecrypted }: DecryptStepProps) {
 
   return (
     <ThemedView>
-      <ThemedText type="subtitle" style={{ marginBottom: 16 }}>Decrypt image</ThemedText>
+      <ThemedText type="subtitle" style={{ marginBottom: 16 }}>
+        Decrypt image
+      </ThemedText>
 
       <Card variant="info">
         <ThemedText>Password:</ThemedText>
@@ -219,7 +231,6 @@ function DisplayStep({ decryptedData, uploadedImageMetadata }: DisplayStepProps)
   const [savedImageUrl, setSavedImageUrl] = React.useState<string | null>(null);
   const [savingToFs, setSavingToFs] = React.useState(false);
 
-
   const saveToFileSystem = async () => {
     setSavingToFs(true);
     const result = await runCatching(async () => {
@@ -231,7 +242,6 @@ function DisplayStep({ decryptedData, uploadedImageMetadata }: DisplayStepProps)
     if (result.success) {
       setSavedImageUrl(result.value.uri);
       Alert.alert('Save successful', result.value.uri);
-
     } else {
       console.warn('Save to filesystem failed:', result.error);
       Alert.alert('Save failed', result.reason);
@@ -247,10 +257,12 @@ function DisplayStep({ decryptedData, uploadedImageMetadata }: DisplayStepProps)
       console.warn('MediaLib save failed:', result.error);
       Alert.alert('MediaLib failed', result.reason);
     }
-  }
+  };
 
   const copyToClipboard = async () => {
-    const result = await runCatching(() => copyImageToClipboardAsync(savedImageUrl ?? decryptedData));
+    const result = await runCatching(() =>
+      copyImageToClipboardAsync(savedImageUrl ?? decryptedData),
+    );
     if (!result.success) {
       console.warn('Clipboard copy failed:', result.error);
       Alert.alert('Copy failed', result.reason);
@@ -265,7 +277,7 @@ function DisplayStep({ decryptedData, uploadedImageMetadata }: DisplayStepProps)
     const result = await runCatching(async () => {
       const extension = inferFileExtensionFromMagicBytes(decryptedData);
       const filename = uploadedImageMetadata?.filename ?? `image${extension}`;
-      const blob = new ExpoBlob([decryptedData as BlobPart])
+      const blob = new ExpoBlob([decryptedData as BlobPart]);
       await saveFileToFileSystemAsync(blob, filename);
     });
 
@@ -273,12 +285,13 @@ function DisplayStep({ decryptedData, uploadedImageMetadata }: DisplayStepProps)
       console.warn('Download failed:', result.error);
       Alert.alert('Download failed', result.reason);
     }
-
-  }
+  };
 
   return (
     <ThemedView>
-      <ThemedText type="subtitle" style={{ marginBottom: 16 }}>Display decrypted image</ThemedText>
+      <ThemedText type="subtitle" style={{ marginBottom: 16 }}>
+        Display decrypted image
+      </ThemedText>
 
       <SectionCard title="In-memory image" variant="info">
         <InMemoryImage
@@ -292,71 +305,67 @@ function DisplayStep({ decryptedData, uploadedImageMetadata }: DisplayStepProps)
         description="Save the decrypted image to your device storage"
       >
         <ScrollView horizontal>
-          <ThemedView style={{ flexDirection: 'row', gap: 12 }} >
+          <ThemedView style={{ flexDirection: 'row', gap: 12 }}>
             {Platform.OS === 'web' ? (
-              <Button
-                title="Save to downloads"
-                onPress={saveToDownloads}
-              />
-            ) : (<>
-              <Button
-                title="Save to cache dir"
-                onPress={saveToFileSystem}
-                loading={savingToFs}
-              />
-              <Button
-                title="Save to gallery"
-                disabled={!savedImageUrl}
-                onPress={saveToMediaLib}
-              />
-            </>
+              <Button title="Save to downloads" onPress={saveToDownloads} />
+            ) : (
+              <>
+                <Button title="Save to cache dir" onPress={saveToFileSystem} loading={savingToFs} />
+                <Button
+                  title="Save to gallery"
+                  disabled={!savedImageUrl}
+                  onPress={saveToMediaLib}
+                />
+              </>
             )}
-            <Button
-              title="Copy to clipboard"
-              onPress={copyToClipboard}
-            />
+            <Button title="Copy to clipboard" onPress={copyToClipboard} />
           </ThemedView>
         </ScrollView>
       </SectionCard>
 
-      {
-        savedImageUrl && (
-          <SectionCard title="Saved image" variant="success">
-            <ThemedText style={styles.description}>Saved to filesystem{'\''}s cache dir</ThemedText>
-            <ThemedText
-              style={[styles.description, { fontSize: 12 }]}
-              numberOfLines={1}
-              ellipsizeMode="middle"
-            >
-              <ThemedText type='defaultSemiBold' style={{ fontSize: 12 }}>uri:</ThemedText>
-              {' '}{savedImageUrl}
-            </ThemedText>
-            <Image
-              source={savedImageUrl}
-              style={{ width: 200, height: 200, alignSelf: 'center' }}
-            />
-          </SectionCard>
-        )
-      }
-    </ThemedView >
+      {savedImageUrl && (
+        <SectionCard title="Saved image" variant="success">
+          <ThemedText style={styles.description}>Saved to filesystem{"'"}s cache dir</ThemedText>
+          <ThemedText
+            style={[styles.description, { fontSize: 12 }]}
+            numberOfLines={1}
+            ellipsizeMode="middle"
+          >
+            <ThemedText type="defaultSemiBold" style={{ fontSize: 12 }}>
+              uri:
+            </ThemedText>{' '}
+            {savedImageUrl}
+          </ThemedText>
+          <Image source={savedImageUrl} style={{ width: 200, height: 200, alignSelf: 'center' }} />
+        </SectionCard>
+      )}
+    </ThemedView>
   );
 }
 
 export default function DownloadScreen() {
   const hosting = useHostingContext();
 
-  const [downloadState, setDownloadState] = React.useState<DownloadState>({ step: 'load', encryptedData: null });
+  const [downloadState, setDownloadState] = React.useState<DownloadState>({
+    step: 'load',
+    encryptedData: null,
+  });
 
-  const uploadedImage = hosting.uploadState.status === 'image_uploaded' ? hosting.uploadState : null;
+  const uploadedImage =
+    hosting.uploadState.status === 'image_uploaded' ? hosting.uploadState : null;
   const uploadedImageMetadata = uploadedImage?.metadata;
 
   // Navigation logic
   const canGoNext = () => {
     switch (downloadState.step) {
-      case 'load': return downloadState.encryptedData !== null;
-      case 'decrypt': return !!downloadState.decryptedData;
-      case 'display': return false;
-      default: return false;
+      case 'load':
+        return downloadState.encryptedData !== null;
+      case 'decrypt':
+        return !!downloadState.decryptedData;
+      case 'display':
+        return false;
+      default:
+        return false;
     }
   };
 
@@ -372,7 +381,7 @@ export default function DownloadScreen() {
           setDownloadState({
             step: 'display',
             encryptedData: downloadState.encryptedData,
-            decryptedData: downloadState.decryptedData
+            decryptedData: downloadState.decryptedData,
           });
         }
         break;
@@ -403,7 +412,7 @@ export default function DownloadScreen() {
       setDownloadState({
         step: 'decrypt',
         encryptedData: downloadState.encryptedData,
-        decryptedData
+        decryptedData,
       });
     }
   };
@@ -413,17 +422,11 @@ export default function DownloadScreen() {
     switch (downloadState.step) {
       case 'load':
         return (
-          <LoadStep
-            encryptedData={downloadState.encryptedData}
-            onDataLoaded={handleDataLoaded}
-          />
+          <LoadStep encryptedData={downloadState.encryptedData} onDataLoaded={handleDataLoaded} />
         );
       case 'decrypt':
         return (
-          <DecryptStep
-            encryptedData={downloadState.encryptedData}
-            onDecrypted={handleDecrypted}
-          />
+          <DecryptStep encryptedData={downloadState.encryptedData} onDecrypted={handleDecrypted} />
         );
       case 'display':
         return (
@@ -438,13 +441,13 @@ export default function DownloadScreen() {
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }} keyboardVerticalOffset={10}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={{ flex: 1 }}
+      keyboardVerticalOffset={10}
+    >
       <StepIndicator currentStep={downloadState.step} steps={steps} />
-      <ThemedScrollView style={styles.container}>
-
-        {renderCurrentStep()}
-
-      </ThemedScrollView>
+      <ThemedScrollView style={styles.container}>{renderCurrentStep()}</ThemedScrollView>
       <StepNavigation
         steps={steps}
         currentStep={downloadState.step}

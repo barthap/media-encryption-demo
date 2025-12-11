@@ -1,18 +1,29 @@
 import { Blob as ExpoBlob } from 'expo-blob';
 import { Image } from 'expo-image';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput } from 'react-native';
-
+import React from 'react';
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+} from 'react-native';
+import {
+  encryptImageWithPasswordAsync,
+  PickedImage,
+  pasteImageFromClipboardAsync,
+  pickImageFromFilesystemAsync,
+  pickImageFromGalleryAsync,
+  saveFileToFileSystemAsync,
+} from '@/business-logic';
+import { KdfAlgorithmPicker } from '@/components/kdf-picker';
+import { StepIndicator, StepItem, StepNavigation } from '@/components/step-based-flow';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedScrollView, ThemedView } from '@/components/themed-view';
 import Button from '@/components/ui/button';
-import { useHostingContext } from '@/context/app-context';
-import React from 'react';
-
-
-import { encryptImageWithPasswordAsync, pasteImageFromClipboardAsync, PickedImage, pickImageFromFilesystemAsync, pickImageFromGalleryAsync, saveFileToFileSystemAsync } from '@/business-logic';
-import { KdfAlgorithmPicker } from '@/components/kdf-picker';
-import { StepIndicator, StepItem, StepNavigation } from '@/components/step-based-flow';
 import { Card, InfoRow, SectionCard } from '@/components/ui/cards';
+import { useHostingContext } from '@/context/app-context';
 import { useClipboardImageAvailable } from '@/hooks/use-clipboard-available';
 import { extractFilename, humanFileSize } from '@/utils/common';
 import { messageForException } from '@/utils/error';
@@ -23,7 +34,7 @@ type UploadStep = 'pick' | 'encrypt' | 'save';
 
 type UploadState =
   | { step: 'pick'; image: PickedImage | null }
-  | { step: 'encrypt'; image: PickedImage, encryptedBlob?: ExpoBlob }
+  | { step: 'encrypt'; image: PickedImage; encryptedBlob?: ExpoBlob }
   | { step: 'save'; image: PickedImage; encryptedBlob: ExpoBlob };
 
 type EncryptionStatus = 'not started' | 'in progress' | 'failed' | `finished in ${number} ms`;
@@ -31,7 +42,7 @@ type EncryptionStatus = 'not started' | 'in progress' | 'failed' | `finished in 
 const steps: StepItem<UploadStep>[] = [
   { key: 'pick', label: 'Pick' },
   { key: 'encrypt', label: 'Encrypt' },
-  { key: 'save', label: 'Save' }
+  { key: 'save', label: 'Save' },
 ];
 
 // Step Components
@@ -50,7 +61,7 @@ function ImagePickStep({ image, onImagePicked }: PickStepProps) {
     }
     console.log('Selected image:', image);
     onImagePicked(image);
-  }
+  };
 
   const loadFromFs = async () => {
     const imageResult = await runCatching(pickImageFromFilesystemAsync);
@@ -75,7 +86,9 @@ function ImagePickStep({ image, onImagePicked }: PickStepProps) {
 
   return (
     <ThemedView>
-      <ThemedText type="subtitle" style={{ marginBottom: 16 }}>Pick a photo</ThemedText>
+      <ThemedText type="subtitle" style={{ marginBottom: 16 }}>
+        Pick a photo
+      </ThemedText>
 
       <SectionCard
         title="Choose image source"
@@ -83,10 +96,14 @@ function ImagePickStep({ image, onImagePicked }: PickStepProps) {
         variant="default"
       >
         <ScrollView horizontal>
-          <ThemedView style={{ flexDirection: 'row', gap: 12 }} >
+          <ThemedView style={{ flexDirection: 'row', gap: 12 }}>
             <Button title="Open gallery" onPress={pickImage} />
             <Button title="Pick file" onPress={loadFromFs} />
-            <Button title="Paste from clipboard" onPress={pasteFromClipboard} disabled={!clipboardAvailable} />
+            <Button
+              title="Paste from clipboard"
+              onPress={pasteFromClipboard}
+              disabled={!clipboardAvailable}
+            />
           </ThemedView>
         </ScrollView>
       </SectionCard>
@@ -136,7 +153,9 @@ function EncryptionStep({ image, onEncrypted }: EncryptionStepProps) {
 
   return (
     <ThemedView>
-      <ThemedText type="subtitle" style={{ marginBottom: 16 }}>Encrypt image</ThemedText>
+      <ThemedText type="subtitle" style={{ marginBottom: 16 }}>
+        Encrypt image
+      </ThemedText>
 
       <Card variant="info">
         <ThemedText>Password:</ThemedText>
@@ -163,7 +182,7 @@ function EncryptionStep({ image, onEncrypted }: EncryptionStepProps) {
       </Card>
     </ThemedView>
   );
-};
+}
 
 interface SaveStepProps {
   encryptedBlob: ExpoBlob;
@@ -180,8 +199,8 @@ function SaveStep({ encryptedBlob, image }: SaveStepProps) {
     const metadata = {
       width,
       height,
-      filename: extractFilename(image.uri) ?? 'image.jpg'
-    }
+      filename: extractFilename(image.uri) ?? 'image.jpg',
+    };
     const result = await hosting.uploadFile(encryptedBlob, metadata);
 
     if (result.success) {
@@ -190,11 +209,11 @@ function SaveStep({ encryptedBlob, image }: SaveStepProps) {
       console.warn('Upload failed:', result.error);
       Alert.alert('Upload failed', result.reason);
     }
-  }
+  };
 
   const handleSave = async () => {
-    const result = await runCatching(
-      async () => saveFileToFileSystemAsync(encryptedBlob, 'encrypted_image.dat')
+    const result = await runCatching(async () =>
+      saveFileToFileSystemAsync(encryptedBlob, 'encrypted_image.dat'),
     );
 
     if (!result.success) {
@@ -203,11 +222,13 @@ function SaveStep({ encryptedBlob, image }: SaveStepProps) {
     } else {
       Alert.alert('Save successful', `File URI: ${result.value?.uri}`);
     }
-  }
+  };
 
   return (
     <ThemedView>
-      <ThemedText type="subtitle" style={{ marginBottom: 16 }}>Save encrypted image</ThemedText>
+      <ThemedText type="subtitle" style={{ marginBottom: 16 }}>
+        Save encrypted image
+      </ThemedText>
 
       <SectionCard title="Encrypted data ready" variant="success">
         <InfoRow
@@ -222,10 +243,14 @@ function SaveStep({ encryptedBlob, image }: SaveStepProps) {
         description="Upload to hosting service or save to your device"
         variant="default"
       >
-        <ThemedView style={{ flexDirection: 'row', gap: 12 }} >
-          <Button title="Upload" onPress={() => startUpload(handleUpload)} loading={uploadInProgress} />
+        <ThemedView style={{ flexDirection: 'row', gap: 12 }}>
           <Button
-            title={Platform.OS === 'web' ? "Save to downloads" : "Save to files"}
+            title="Upload"
+            onPress={() => startUpload(handleUpload)}
+            loading={uploadInProgress}
+          />
+          <Button
+            title={Platform.OS === 'web' ? 'Save to downloads' : 'Save to files'}
             onPress={() => startSaving(handleSave)}
             loading={savingInProgress}
           />
@@ -233,7 +258,7 @@ function SaveStep({ encryptedBlob, image }: SaveStepProps) {
       </SectionCard>
     </ThemedView>
   );
-};
+}
 
 export default function UploadScreen() {
   const hosting = useHostingContext();
@@ -243,10 +268,14 @@ export default function UploadScreen() {
   // Navigation logic
   const canGoNext = () => {
     switch (uploadState.step) {
-      case 'pick': return uploadState.image !== null;
-      case 'encrypt': return !!uploadState.encryptedBlob;
-      case 'save': return false;
-      default: return false;
+      case 'pick':
+        return uploadState.image !== null;
+      case 'encrypt':
+        return !!uploadState.encryptedBlob;
+      case 'save':
+        return false;
+      default:
+        return false;
     }
   };
 
@@ -262,7 +291,7 @@ export default function UploadScreen() {
           setUploadState({
             step: 'save',
             image: uploadState.image,
-            encryptedBlob: uploadState.encryptedBlob
+            encryptedBlob: uploadState.encryptedBlob,
           });
         }
         break;
@@ -287,14 +316,14 @@ export default function UploadScreen() {
 
   const handleImagePicked = (image: PickedImage) => {
     setUploadState({ step: 'pick', image });
-  }
+  };
 
   const handleEncrypted = (blob: ExpoBlob) => {
     if (uploadState.step === 'encrypt') {
       setUploadState({
         step: 'encrypt',
         image: uploadState.image,
-        encryptedBlob: blob
+        encryptedBlob: blob,
       });
     }
   };
@@ -303,39 +332,24 @@ export default function UploadScreen() {
   const renderCurrentStep = () => {
     switch (uploadState.step) {
       case 'pick':
-        return (
-          <ImagePickStep
-            image={uploadState.image}
-            onImagePicked={handleImagePicked}
-          />
-        );
+        return <ImagePickStep image={uploadState.image} onImagePicked={handleImagePicked} />;
       case 'encrypt':
-        return (
-          <EncryptionStep
-            image={uploadState.image}
-            onEncrypted={handleEncrypted}
-          />
-        );
+        return <EncryptionStep image={uploadState.image} onEncrypted={handleEncrypted} />;
       case 'save':
-        return (
-          <SaveStep
-            encryptedBlob={uploadState.encryptedBlob}
-            image={uploadState.image}
-          />
-        );
+        return <SaveStep encryptedBlob={uploadState.encryptedBlob} image={uploadState.image} />;
       default:
         return null;
     }
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }} keyboardVerticalOffset={10}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={{ flex: 1 }}
+      keyboardVerticalOffset={10}
+    >
       <StepIndicator currentStep={uploadState.step} steps={steps} />
-      <ThemedScrollView style={styles.container}>
-
-        {renderCurrentStep()}
-
-      </ThemedScrollView>
+      <ThemedScrollView style={styles.container}>{renderCurrentStep()}</ThemedScrollView>
       <StepNavigation
         steps={steps}
         currentStep={uploadState.step}
@@ -369,6 +383,8 @@ const styles = StyleSheet.create({
     height: 40,
     margin: 12,
     borderWidth: 1,
-    padding: 10, borderRadius: 10, borderColor: 'gray',
+    padding: 10,
+    borderRadius: 10,
+    borderColor: 'gray',
   },
 });

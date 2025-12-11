@@ -14,14 +14,10 @@ export function Card({ children, style, variant = 'default' }: CardProps) {
   const cardStyle = [
     styles.baseCard,
     styles[`${variant}Card` as keyof typeof styles] as ViewStyle,
-    style
+    style,
   ];
 
-  return (
-    <ThemedView style={cardStyle}>
-      {children}
-    </ThemedView>
-  );
+  return <ThemedView style={cardStyle}>{children}</ThemedView>;
 }
 
 // Section card with header
@@ -33,17 +29,19 @@ interface SectionCardProps {
   style?: ViewStyle;
 }
 
-export function SectionCard({ title, description, children, variant = 'default', style }: SectionCardProps) {
+export function SectionCard({
+  title,
+  description,
+  children,
+  variant = 'default',
+  style,
+}: SectionCardProps) {
   return (
     <Card variant={variant} style={style}>
       <ThemedText type="defaultSemiBold" style={{ marginBottom: 8 }}>
         {title}
       </ThemedText>
-      {description && (
-        <ThemedText style={styles.description}>
-          {description}
-        </ThemedText>
-      )}
+      {description && <ThemedText style={styles.description}>{description}</ThemedText>}
       {children}
     </Card>
   );
@@ -84,9 +82,7 @@ export function SuccessCard({ message, style }: SuccessCardProps) {
 
   return (
     <Card variant="success" style={combinedStyle}>
-      <ThemedText style={styles.successText}>
-        ✓ {message}
-      </ThemedText>
+      <ThemedText style={styles.successText}>✓ {message}</ThemedText>
     </Card>
   );
 }

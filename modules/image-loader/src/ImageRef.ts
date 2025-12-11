@@ -18,4 +18,3 @@ export declare class ImageRef extends SharedRef<'image'> {
 }
 
 export default ImageLoader.ImageRef as typeof ImageRef;
-

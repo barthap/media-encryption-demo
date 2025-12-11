@@ -16,11 +16,11 @@ export class Asset implements AssetType {
   }
 
   static async create(filePath: string, album?: Album): Promise<Asset> {
-    const legacyAsset = await createAssetAsync(filePath, album?.id)
+    const legacyAsset = await createAssetAsync(filePath, album?.id);
     return new Asset(legacyAsset);
   }
   static async delete(assets: AssetType[]): Promise<void> {
-    await deleteAssetsAsync(assets.map(asset => asset.id));
+    await deleteAssetsAsync(assets.map((asset) => asset.id));
   }
 
   async getCreationTime(): Promise<number | null> {
@@ -66,4 +66,3 @@ function translateMediaType(legacyType: LegacyAsset['mediaType']): MediaType {
       return 'unknown' as MediaType;
   }
 }
-

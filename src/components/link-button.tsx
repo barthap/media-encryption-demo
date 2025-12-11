@@ -9,9 +9,7 @@ export function LinkButton({ href, ...rest }: Props) {
 
   const onPress = () => {
     router.navigate(href);
-  }
+  };
 
-  return (
-    <Button onPress={onPress} {...rest} />
-  );
+  return <Button onPress={onPress} {...rest} />;
 }

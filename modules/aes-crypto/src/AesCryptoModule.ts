@@ -1,6 +1,12 @@
 import { NativeModule, requireNativeModule } from 'expo';
 
-import { DecryptOptions, EncryptOptions, KeySize, SealedDataConfig, SerializableInput } from './AesCrypto.types';
+import {
+  DecryptOptions,
+  EncryptOptions,
+  KeySize,
+  SealedDataConfig,
+  SerializableInput,
+} from './AesCrypto.types';
 
 /**
  * Represents an encryption key for AES.
@@ -47,7 +53,11 @@ declare class SealedData {
    * @param tag The authentication tag.
    * @returns A SealedData object.
    */
-  static fromNonceAndCiphertext(iv: SerializableInput, ciphertext: SerializableInput, tag: SerializableInput): SealedData;
+  static fromNonceAndCiphertext(
+    iv: SerializableInput,
+    ciphertext: SerializableInput,
+    tag: SerializableInput,
+  ): SealedData;
   /**
    * Creates a SealedData instance from separate nonce, ciphertext, and optionally a tag.
    * @param iv The initialization vector.
@@ -55,14 +65,18 @@ declare class SealedData {
    * @param tag Authentication tag length, in bytes. Default to 16.
    * @returns A SealedData object.
    */
-  static fromNonceAndCiphertext(iv: SerializableInput, ciphertextWithTag: SerializableInput, tagLength?: number): SealedData;
+  static fromNonceAndCiphertext(
+    iv: SerializableInput,
+    ciphertextWithTag: SerializableInput,
+    tagLength?: number,
+  ): SealedData;
 
   /**
    * Retrieves the ciphertext.
    * @returns The ciphertext as a Uint8Array.
    */
-  ciphertext(options: { withTag?: boolean, encoding: 'base64' }): Promise<string>;
-  ciphertext(options?: { withTag?: boolean, encoding?: 'bytes' }): Promise<Uint8Array>;
+  ciphertext(options: { withTag?: boolean; encoding: 'base64' }): Promise<string>;
+  ciphertext(options?: { withTag?: boolean; encoding?: 'bytes' }): Promise<Uint8Array>;
 
   /**
    * Retrieves the initialization vector.
@@ -91,7 +105,7 @@ declare class SealedData {
 
 type NativeEncryptOptions = Omit<EncryptOptions, 'nonce'> & {
   nonce?: number | Uint8Array | undefined;
-}
+};
 
 declare class NativeAesCryptoModule extends NativeModule {
   EncryptionKey: typeof EncryptionKey;
@@ -103,7 +117,7 @@ declare class NativeAesCryptoModule extends NativeModule {
   encryptAsync(
     plaintext: SerializableInput,
     key: EncryptionKey,
-    options?: NativeEncryptOptions
+    options?: NativeEncryptOptions,
   ): Promise<SealedData>;
   decryptAsync(
     sealedData: SealedData,

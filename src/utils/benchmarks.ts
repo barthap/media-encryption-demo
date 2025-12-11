@@ -1,4 +1,3 @@
-
 export async function benchmarked<T>(name: string, block: () => Promise<T>): Promise<T> {
   const timeStart = Date.now();
   try {

@@ -19,22 +19,15 @@ type Props = PropsWithChildren<
   }
 >;
 
-function Button({
-  disabled,
-  loading,
-  title,
-  onPress,
-  style,
-  buttonStyle,
-  children,
-}: Props) {
+function Button({ disabled, loading, title, onPress, style, buttonStyle, children }: Props) {
   return (
     <View style={[styles.container, style]}>
       <TouchableHighlight
         style={[styles.button, disabled && styles.disabledButton, buttonStyle]}
         disabled={disabled || loading}
         onPress={onPress}
-        underlayColor={UnthemedColors.highlightColor}>
+        underlayColor={UnthemedColors.highlightColor}
+      >
         {children ||
           (loading ? (
             <ActivityIndicator size="small" color="white" />

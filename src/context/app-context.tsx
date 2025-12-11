@@ -27,12 +27,12 @@ export interface UploadInfo {
 
 type AppState =
   | { status: 'none' }
-  | { status: 'image_uploaded', info: UploadInfo, metadata: ImageMetadata };
+  | { status: 'image_uploaded'; info: UploadInfo; metadata: ImageMetadata };
 
 const initialAppState: AppState = { status: 'none' };
 
 interface CtxVal {
-  uploadState: AppState,
+  uploadState: AppState;
   uploadFile: (data: ExpoBlob, metadata: ImageMetadata) => Promise<Result<UploadInfo>>;
   clearUpload: () => void;
 }
@@ -40,7 +40,7 @@ interface CtxVal {
 const FileHostingContext = React.createContext<CtxVal>({
   uploadState: initialAppState,
   uploadFile: () => Promise.reject(new Error('Context not set')),
-  clearUpload: () => { }
+  clearUpload: () => {},
 });
 
 export function useHostingContext() {
@@ -50,20 +50,21 @@ export function useHostingContext() {
 export default function FileHostingProvider({ children }: React.PropsWithChildren) {
   const [appState, setAppState] = React.useState<AppState>(initialAppState);
 
-  const uploadFile = (data: ExpoBlob, metadata: ImageMetadata) => runCatching(async () => {
-    const encryptedFilename = `${metadata.filename}.dat`;
+  const uploadFile = (data: ExpoBlob, metadata: ImageMetadata) =>
+    runCatching(async () => {
+      const encryptedFilename = `${metadata.filename}.dat`;
 
-    const { url, webpageURL, expires } = await uploadBlobAsync(data, encryptedFilename);
+      const { url, webpageURL, expires } = await uploadBlobAsync(data, encryptedFilename);
 
-    const info: UploadInfo = {
-      expires,
-      webpageURL,
-      directURL: url,
-    };
+      const info: UploadInfo = {
+        expires,
+        webpageURL,
+        directURL: url,
+      };
 
-    setAppState({ status: 'image_uploaded', info, metadata });
-    return info;
-  });
+      setAppState({ status: 'image_uploaded', info, metadata });
+      return info;
+    });
 
   const clearUpload = () => setAppState(initialAppState);
 
@@ -73,7 +74,5 @@ export default function FileHostingProvider({ children }: React.PropsWithChildre
     clearUpload,
   };
 
-  return <FileHostingContext.Provider value={ctxValue}>
-    {children}
-  </FileHostingContext.Provider>
+  return <FileHostingContext.Provider value={ctxValue}>{children}</FileHostingContext.Provider>;
 }

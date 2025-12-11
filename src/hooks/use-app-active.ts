@@ -11,7 +11,6 @@ export function useOnAppForegrounded(fn: () => void): void {
       if (state === 'active') {
         fn();
       }
-
     });
 
     return subscription.remove;

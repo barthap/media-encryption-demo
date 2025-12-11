@@ -4,8 +4,8 @@ import React from 'react';
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useHostingContext } from '@/context/app-context';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -19,7 +19,8 @@ export default function TabLayout() {
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
         tabBarButton: HapticTab,
-      }}>
+      }}
+    >
       <Tabs.Screen
         name="(home)"
         options={{
@@ -33,7 +34,9 @@ export default function TabLayout() {
           title: 'Upload',
           headerTitle: 'Encrypt & upload',
           headerShown: true,
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="arrow.up.circle.fill" color={color} />,
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={28} name="arrow.up.circle.fill" color={color} />
+          ),
         }}
       />
       <Tabs.Screen
@@ -42,12 +45,14 @@ export default function TabLayout() {
           title: 'Download',
           headerTitle: 'Download & decrypt',
           headerShown: true,
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="arrow.down.circle.fill" color={color} />,
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={28} name="arrow.down.circle.fill" color={color} />
+          ),
           tabBarBadge: downloadAvailable ? '✔︎' : undefined,
           tabBarBadgeStyle: {
             backgroundColor: 'green', // '#00ff00',
-            fontSize: 8
-          }
+            fontSize: 8,
+          },
         }}
       />
     </Tabs>

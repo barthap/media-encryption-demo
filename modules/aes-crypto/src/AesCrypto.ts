@@ -4,15 +4,14 @@ import {
   DecryptOptions,
   EncryptOptions,
   KeySize,
-  SerializableInput
-} from "./AesCrypto.types";
-import AesCryptoModule from "./AesCryptoModule";
-
+  SerializableInput,
+} from './AesCrypto.types';
+import AesCryptoModule from './AesCryptoModule';
 
 export * from './AesCrypto.types';
 
-export class EncryptionKey extends AesCryptoModule.EncryptionKey { }
-export class SealedData extends AesCryptoModule.SealedData { }
+export class EncryptionKey extends AesCryptoModule.EncryptionKey {}
+export class SealedData extends AesCryptoModule.SealedData {}
 
 /**
  * Generates a new AES encryption key of the specified size.
@@ -37,7 +36,10 @@ export function importKey(bytes: Uint8Array): Promise<EncryptionKey>;
  * @returns A promise that resolves to an EncryptionKey instance.
  */
 export function importKey(hexString: string, encoding: 'hex' | 'base64'): Promise<EncryptionKey>;
-export function importKey(keyInput: string | Uint8Array, encoding?: 'hex' | 'base64'): Promise<EncryptionKey> {
+export function importKey(
+  keyInput: string | Uint8Array,
+  encoding?: 'hex' | 'base64',
+): Promise<EncryptionKey> {
   return AesCryptoModule.importKey(keyInput, encoding);
 }
 
@@ -50,16 +52,16 @@ export function importKey(keyInput: string | Uint8Array, encoding?: 'hex' | 'bas
 export function encryptAsync(
   plaintext: SerializableInput,
   key: EncryptionKey,
-  options?: EncryptOptions
+  options?: EncryptOptions,
 ): Promise<SealedData> {
   const { nonce, ...rest } = options ?? {};
 
   const nonceValue = nonce && 'bytes' in nonce ? nonce.bytes : nonce?.length;
   const nativeOptions = {
     nonce: nonceValue,
-    ...rest
+    ...rest,
   };
-  return AesCryptoModule.encryptAsync(plaintext, key, nativeOptions)
+  return AesCryptoModule.encryptAsync(plaintext, key, nativeOptions);
 }
 
 /**

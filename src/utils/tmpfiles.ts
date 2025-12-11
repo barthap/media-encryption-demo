@@ -7,8 +7,8 @@ const UPLOAD_URL = 'https://tmpfiles.org/api/v1/upload';
 interface UploadSuccessResponse {
   status: 'success';
   data: {
-    url: string
-  }
+    url: string;
+  };
 }
 
 interface UploadFailureResponse {
@@ -19,7 +19,7 @@ interface UploadFailureResponse {
 type UploadResponse = UploadSuccessResponse | UploadFailureResponse;
 
 function isSuccessResponse(response: UploadResponse): response is UploadSuccessResponse {
-  return 'status' in response && response.status === 'success'
+  return 'status' in response && response.status === 'success';
 }
 
 function prepareRequestBody(blob: ExpoBlob, filename: string) {
@@ -46,13 +46,13 @@ function makeDownloadableUrl(responseUrl: string): string {
 
 interface UploadBlobResult {
   url: string;
-  webpageURL: string,
-  expires: Date
+  webpageURL: string;
+  expires: Date;
 }
 
 export async function uploadBlobAsync(
   blob: ExpoBlob,
-  filename: string = 'upload.jpg'
+  filename: string = 'upload.jpg',
 ): Promise<UploadBlobResult> {
   const requestBody = prepareRequestBody(blob, filename);
 
@@ -63,9 +63,11 @@ export async function uploadBlobAsync(
     // This breaks web which automatically adds boundary here. And would end up with HTTP 422 responses
   });
 
-  const json = await response.json() as UploadResponse;
+  const json = (await response.json()) as UploadResponse;
   if (!isSuccessResponse(json)) {
-    throw new Error(`Errror response (HTTP ${response.status}) from upload endpoint: ${json.message}`);
+    throw new Error(
+      `Errror response (HTTP ${response.status}) from upload endpoint: ${json.message}`,
+    );
   }
 
   const expirationDate = new Date();
@@ -74,6 +76,6 @@ export async function uploadBlobAsync(
   return {
     url: makeDownloadableUrl(json.data.url),
     webpageURL: json.data.url,
-    expires: expirationDate
-  }
+    expires: expirationDate,
+  };
 }

@@ -16,7 +16,7 @@ class ImageLoaderModule extends NativeModule {
       null,
     );
   }
-};
+}
 
 /**
  * Helper that resolves to an `<img />` element once it finishes loading the given source.
@@ -32,6 +32,5 @@ async function loadImageElementAsync(src: string): Promise<HTMLImageElement> {
     image.src = src;
   });
 }
-
 
 export default registerWebModule(ImageLoaderModule, 'ImageLoaderModule');

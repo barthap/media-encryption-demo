@@ -1,6 +1,6 @@
-import React from "react";
+import React from 'react';
 import * as Clipboard from 'expo-clipboard';
-import { useOnAppForegrounded } from "./use-app-active";
+import { useOnAppForegrounded } from './use-app-active';
 
 export function useClipboardImageAvailable(): boolean {
   const listenerRef = React.useRef<Clipboard.Subscription | null>(null);
@@ -20,9 +20,9 @@ export function useClipboardImageAvailable(): boolean {
       if (listenerRef.current) {
         // FIXME: Shouldn't the following be deprecated?:
         // Clipboard.removeClipboardListener(listenerRef.current);
-        listenerRef.current.remove()
+        listenerRef.current.remove();
       }
-    }
+    };
   }, []);
 
   // Clipboard listener doesn't work when app is in background
@@ -32,4 +32,3 @@ export function useClipboardImageAvailable(): boolean {
 
   return clipboardAvailable;
 }
-

@@ -22,17 +22,20 @@ async function encryptionTest() {
     // const encryptionKey = new AesCrypto.SymmetricKey(128);
     const encrypted = await AesCrypto.encryptAsync(encryptionKey, data, aad);
 
-    console.log('Key:', { bytes: encryptionKey.bytes, size: encryptionKey.size })
+    console.log('Key:', { bytes: encryptionKey.bytes, size: encryptionKey.size });
 
     const { tagSize, combinedSize, ivSize } = encrypted;
     const combined = encrypted.combined();
     console.log('Encryptiion:', {
-      tagSize, combined, combinedSize, ivSize
+      tagSize,
+      combined,
+      combinedSize,
+      ivSize,
     });
 
     const iv = encrypted.iv();
     const ciphertextWithTag = encrypted.ciphertext(true);
-    console.log('Ingredients', { iv, ciphertextWithTag })
+    console.log('Ingredients', { iv, ciphertextWithTag });
 
     // const sealed = new AesCrypto.SealedData(combined, ivSize, tagSize);
     const sealed = new AesCrypto.SealedData(iv, ciphertextWithTag, 16);
@@ -50,7 +53,6 @@ async function encryptionTest() {
   }
 }
 
-
 export default function AesPlayground() {
   return (
     <ParallaxScrollView
@@ -62,13 +64,15 @@ export default function AesPlayground() {
           name="chevron.left.forwardslash.chevron.right"
           style={styles.headerImage}
         />
-      }>
+      }
+    >
       <ThemedView style={styles.titleContainer}>
         <ThemedText
           type="title"
           style={{
             fontFamily: Fonts.rounded,
-          }}>
+          }}
+        >
           AES Playground
         </ThemedText>
       </ThemedView>
