@@ -113,6 +113,12 @@ export interface SelectListProps {
 
 type L1Keys = { key?: any; value?: any; disabled?: boolean | undefined }
 
+type VoidFn = (...args: any[]) => void;
+
+const noOpEffectEvent = (f: VoidFn) => f;
+const useEffectEvent: (f: VoidFn) => VoidFn =
+  "useEffectEvent" in React ? (React.useEffectEvent as typeof noOpEffectEvent) : noOpEffectEvent;
+
 const SelectList: React.FC<SelectListProps> = ({
   setSelected,
   placeholder,
@@ -143,17 +149,17 @@ const SelectList: React.FC<SelectListProps> = ({
   const animatedHeight = useSharedValue(0);
 
 
-  const slidedown = () => {
+  const slidedown = useEffectEvent(() => {
     setDropdown(true)
     animatedHeight.value = withTiming(height, { duration: 200, easing: Easing.linear });
-  }
-  const slideup = () => {
+  });
+  const slideup = useEffectEvent(() => {
     animatedHeight.value = withTiming(
       0,
       { duration: 200, easing: Easing.linear },
       () => { scheduleOnRN(setDropdown, false); }
     );
-  }
+  });
 
   React.useEffect(() => {
     if (maxHeight)
