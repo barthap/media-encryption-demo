@@ -242,6 +242,7 @@ const SelectList: React.FC<SelectListProps> = ({
           (!arrowicon)
             ?
             <Image
+              // biome-ignore lint/style/noCommonJs: allowed for assets
               source={require('@assets/images/chevron.png')}
               resizeMode='contain'
               style={{ width: 20, height: 20 }}

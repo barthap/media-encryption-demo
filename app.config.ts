@@ -1,4 +1,4 @@
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+// biome-ignore-all lint/style/noCommonJs: allowed for assets
 const ip = require('internal-ip');
 
 const corsProxyHost = process.env.CORS_PROXY_HOST || ip.internalIpV4Sync();

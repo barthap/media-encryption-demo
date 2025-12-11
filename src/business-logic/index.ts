@@ -461,7 +461,7 @@ export function inferFileExtensionFromMagicBytes(imageData: Uint8Array) {
   * @deprecated Does not work on Android. Use [`inferFileExtensionFromMagicBytes`] instead,
   * its simpler and better.
   */
-async function inferFileExtensionAndRename(file: FileSystem.File) {
+async function _inferFileExtensionAndRename(file: FileSystem.File) {
   // NOTE: `file.type` is null for newly-created files so we have to assume it is an image
   // and load using with expo-image
   // FIXME: Does not work on Android (always null, see expo-image source code)

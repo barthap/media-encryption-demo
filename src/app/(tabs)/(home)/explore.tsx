@@ -58,6 +58,7 @@ export default function TabTwoScreen() {
           different screen densities
         </ThemedText>
         <Image
+          // biome-ignore lint/style/noCommonJs: allowed for assets
           source={require('@assets/images/react-logo.png')}
           style={{ width: 100, height: 100, alignSelf: 'center' }}
         />
