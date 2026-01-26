@@ -64,7 +64,7 @@ to keep all the interesting code in one place.
 │   ├── utils/                 # Utility functions
 │   └── imports/               # Platform-specific imports with web workarounds
 ├── modules/
-│   ├── aes-crypto/            # Custom AES encryption Expo module
+│   ├── expo-argon2/           # Expo Module for Argon2 hashing (git submodule) 
 │   └── image-loader/          # Custom image loading utilities
 ├── cors-proxy/                # CORS proxy server for web downloads
 └── assets/                    # Static assets (images, etc.)
@@ -72,18 +72,12 @@ to keep all the interesting code in one place.
 
 ## Custom Modules
 
-### AES Crypto Module
+### ~~AES Crypto Module~~
 
-Since `expo-crypto` doesn't yet include AES encryption (there's a [pull request](https://github.com/expo/expo/pull/41249)), this project includes a
-custom native module providing:
+Now removed. Since SDK 55, `expo-crypto` includes AES encryption.
 
-- Secure random key generation and import/export
-- AES 128/192/256 GCM encryption/decryption with AAD authentication
-- Portable `SealedData` format for encrypted data
-- Platform support: iOS (CryptoKit), Android (javax.crypto.Cipher), Web (SubtleCrypto)
-
-See [modules/aes-crypto/README.md](modules/aes-crypto/README.md)
-for detailed API documentation.
+- [expo-crypto docs](https://docs.expo.dev/versions/v55.0.0/sdk/crypto/#aes-encryption-and-decryption)
+- original [pull request](https://github.com/expo/expo/pull/41249)
 
 ### Image Loader Module
 
