@@ -1,7 +1,6 @@
-import * as ExpoCrypto from 'expo-crypto';
+import * as Crypto from 'expo-crypto';
+import * as Argon2 from '../../modules/expo-argon2/src/index';
 import { hexToUintArray } from './common';
-import { AES } from '@modules/aes-crypto';
-import * as Argon2 from '@modules/expo-argon2/src/index';
 
 export type KeyDerivationAlgorithm = 'sha256' | 'argon2' | 'pbkdf2';
 
@@ -9,7 +8,7 @@ export interface PasswordHasher {
   /**
    * Should return 256-bit long hash of given password
    */
-  hash(password: string): Promise<AES.EncryptionKey>;
+  hash(password: string): Promise<Crypto.AESEncryptionKey>;
 }
 
 /**
@@ -18,14 +17,14 @@ export interface PasswordHasher {
  * even with salt. Prefer Argon2id or PBKDF2 instead.
  */
 export class UnsafeSha256Hasher implements PasswordHasher {
-  async hash(password: string): Promise<AES.EncryptionKey> {
-    const digestString = await ExpoCrypto.digestStringAsync(
-      ExpoCrypto.CryptoDigestAlgorithm.SHA256,
+  async hash(password: string): Promise<Crypto.AESEncryptionKey> {
+    const digestString = await Crypto.digestStringAsync(
+      Crypto.CryptoDigestAlgorithm.SHA256,
       password,
-      { encoding: ExpoCrypto.CryptoEncoding.HEX },
+      { encoding: Crypto.CryptoEncoding.HEX },
     );
     const bytes = hexToUintArray(digestString);
-    return await AES.importKey(bytes);
+    return await Crypto.AESEncryptionKey.import(bytes);
   }
 }
 
@@ -66,7 +65,7 @@ export class Argon2Hasher implements PasswordHasher {
     this.config = config;
   }
 
-  async hash(password: string): Promise<AES.EncryptionKey> {
+  async hash(password: string): Promise<Crypto.AESEncryptionKey> {
     const { salt, timeCost, memoryCost, parallelism } = this.config;
 
     const { rawHash } = await Argon2.hashAsync(password, salt, {
@@ -76,7 +75,7 @@ export class Argon2Hasher implements PasswordHasher {
     });
 
     const bytes = hexToUintArray(rawHash);
-    return await AES.importKey(bytes);
+    return await Crypto.AESEncryptionKey.import(bytes);
   }
 }
 
@@ -94,7 +93,7 @@ export class Pbkdf2Hasher implements PasswordHasher {
     this.config = config;
   }
 
-  async hash(password: string): Promise<AES.EncryptionKey> {
+  async hash(password: string): Promise<Crypto.AESEncryptionKey> {
     throw new Error('Unimplemented');
   }
 }

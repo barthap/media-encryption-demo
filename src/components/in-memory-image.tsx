@@ -1,10 +1,10 @@
-import { ImageRef } from '@modules/image-loader';
 import { Image, ImageProps } from 'expo-image';
 import * as React from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import { loadImageInMemoryAsync } from '@/business-logic';
 import { ThemedText } from '@/components/themed-text';
 import { messageForException } from '@/utils/error';
+import { ImageRef } from '../../modules/image-loader';
 
 const loadImage = async (imageData: Uint8Array) => {
   // artificial delay
@@ -19,7 +19,7 @@ const loadImage = async (imageData: Uint8Array) => {
   return image;
 };
 
-const onError = (error: Error, info: React.ErrorInfo) => {
+const onError = (error: unknown, info: React.ErrorInfo) => {
   console.warn('Failed to load image in memory:', error, info);
 };
 

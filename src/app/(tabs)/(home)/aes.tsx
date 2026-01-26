@@ -1,16 +1,12 @@
-import { Image } from 'expo-image';
-import { Alert, Platform, StyleSheet } from 'react-native';
-
-import { Collapsible } from '@/components/ui/collapsible';
-import { ExternalLink } from '@/components/external-link';
+import * as Crypto from 'expo-crypto';
+import { Alert, StyleSheet } from 'react-native';
 import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import Button from '@/components/ui/button';
+import { Collapsible } from '@/components/ui/collapsible';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Fonts } from '@/constants/theme';
-import Button from '@/components/ui/button';
-
-import AesCrypto from '@modules/aes-crypto';
 import { messageForException } from '@/utils/error';
 
 async function encryptionTest() {
@@ -18,14 +14,16 @@ async function encryptionTest() {
   const aad = new Uint8Array([4, 6, 6]);
 
   try {
-    const encryptionKey = await AesCrypto.generateKey();
+    const encryptionKey = await Crypto.AESEncryptionKey.generate();
     // const encryptionKey = new AesCrypto.SymmetricKey(128);
-    const encrypted = await AesCrypto.encryptAsync(encryptionKey, data, aad);
+    const encrypted = await Crypto.aesEncryptAsync(data, encryptionKey, {
+      additionalData: aad
+    });
 
     console.log('Key:', { bytes: encryptionKey.bytes, size: encryptionKey.size });
 
     const { tagSize, combinedSize, ivSize } = encrypted;
-    const combined = encrypted.combined();
+    const combined = await encrypted.combined();
     console.log('Encryptiion:', {
       tagSize,
       combined,
@@ -33,17 +31,20 @@ async function encryptionTest() {
       ivSize,
     });
 
-    const iv = encrypted.iv();
-    const ciphertextWithTag = encrypted.ciphertext(true);
-    console.log('Ingredients', { iv, ciphertextWithTag });
+    const iv = await encrypted.iv();
+    const tag = await encrypted.tag();
+    const ciphertext = await encrypted.ciphertext();
+    console.log('Ingredients', { iv, ciphertext, tag });
 
     // const sealed = new AesCrypto.SealedData(combined, ivSize, tagSize);
-    const sealed = new AesCrypto.SealedData(iv, ciphertextWithTag, 16);
+    const sealed = Crypto.AESSealedData.fromParts(iv, ciphertext, tag);
 
     // const decryptionKey = new AesCrypto.SymmetricKey(encryptionKey.bytes);
     const decryptionKey = encryptionKey;
 
-    const decrypted = await AesCrypto.decryptAsync(decryptionKey, sealed, aad);
+    const decrypted = await Crypto.aesDecryptAsync(sealed, decryptionKey, { 
+      additionalData: aad 
+    });
 
     console.log('Decrypted! Data:', decrypted.toString());
     Alert.alert('Decrypted!', `Data: ${decrypted}`);

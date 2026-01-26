@@ -1,9 +1,7 @@
-import { AES } from '@modules/aes-crypto';
-import ImageLoader, { ImageRef } from '@modules/image-loader';
 import { Blob as ExpoBlob } from 'expo-blob';
 import * as Clipboard from 'expo-clipboard';
 import Constants from 'expo-constants';
-import { randomUUID } from 'expo-crypto';
+import * as Crypto from 'expo-crypto';
 import * as FileSystem from 'expo-file-system';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -12,6 +10,7 @@ import * as MediaLibrary from '@/imports/media-library-next';
 import { benchmarked } from '@/utils/benchmarks';
 import { base64toUintArray, uint8ArrayToBase64 } from '@/utils/common';
 import { getHasher, KeyDerivationAlgorithm } from '@/utils/password';
+import ImageLoader, { ImageRef } from '../../modules/image-loader';
 
 export interface PickedImage {
   uri: string;
@@ -264,7 +263,7 @@ export async function encryptImageWithPasswordAsync(
 
   const plainImageBuffer = await readUriToArrayBufferAsync(image.uri);
 
-  const sealedData = await AES.encryptAsync(plainImageBuffer, key);
+  const sealedData = await Crypto.aesEncryptAsync(plainImageBuffer, key);
   const sealedDataBytes = await sealedData.combined();
 
   const blob = new ExpoBlob([sealedDataBytes]);
@@ -366,8 +365,8 @@ export async function decryptDataWithPasswordAsync(
 ): Promise<Uint8Array> {
   const key = await getHasher(kdfAlgorithm).hash(password);
 
-  const sealedData = AES.SealedData.fromCombined(encryptedData);
-  const decrypted = await AES.decryptAsync(sealedData, key);
+  const sealedData = Crypto.AESSealedData.fromCombined(encryptedData);
+  const decrypted = await Crypto.aesDecryptAsync(sealedData, key);
   return decrypted;
 }
 
@@ -408,7 +407,7 @@ export async function saveTempFileAsync(
   const { overwrite = true, inferFileExtension = true } = options;
 
   if (!filename) {
-    filename = randomUUID();
+    filename = Crypto.randomUUID();
 
     if (inferFileExtension) {
       const extension = inferFileExtensionFromMagicBytes(contents);
