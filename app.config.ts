@@ -16,9 +16,8 @@ module.exports = {
   icon: './assets/images/icon.png',
   scheme: 'mediaencryptiondemo',
   userInterfaceStyle: 'automatic',
-  newArchEnabled: true,
   ios: {
-    supportsTablet: true,
+    supportsTablet: false,
     bundleIdentifier: 'com.anonymous.media-encryption-demo',
   },
   android: {
@@ -51,7 +50,9 @@ module.exports = {
       },
     ],
     'expo-font',
+    'expo-image',
     'expo-image-picker',
+    'expo-web-browser',
     [
       'expo-build-properties',
       {
